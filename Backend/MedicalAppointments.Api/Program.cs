@@ -1,23 +1,56 @@
+using MedicalAppointments.Api.Extensions;
+using MedicalAppointments.Api.Middleware;
+using MedicalAppointments.Application;
+using MedicalAppointments.Infrastructure;
+using MedicalAppointments.Infrastructure.Identity;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApiServices();
+builder.Services.AddApiAuthentication(builder.Configuration);
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? ["https://localhost:7171"];
+
+        policy.WithOrigins(origins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+if (!app.Environment.IsEnvironment("IntegrationTesting"))
+{
+    using var scope = app.Services.CreateScope();
+    await IdentitySeeder.SeedRolesAsync(scope.ServiceProvider);
+    await IdentityDevAdminSeeder.SeedDevelopmentAdminAsync(scope.ServiceProvider, app.Configuration);
+}
+
+app.UseExceptionHandler();
+app.UseHttpsRedirection();
+app.UseCors("Frontend");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
 app.Run();
+
+public partial class Program;

@@ -1,0 +1,41 @@
+@page "/paciente/historial"
+@attribute [Authorize(Roles = AppRoles.Patient)]
+@rendermode InteractiveServer
+@inject IAppointmentApiService AppointmentApi
+
+<PageTitle>Historial de citas</PageTitle>
+<h1 class="page-title">Historial de citas</h1>
+<p class="text-muted">Consulta citas completadas o canceladas. No incluye información clínica.</p>
+
+@if (_loading) { <LoadingIndicator />; }
+else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
+else if (_items.Count == 0) { <EmptyState Title="Sin historial" Description="Aún no tienes citas completadas o canceladas." />; }
+else
+{
+    <div class="grid-cards">
+        @foreach (var item in _items)
+        {
+            <article class="card">
+                <p><strong>@item.DoctorName</strong> — @item.SpecialtyName</p>
+                <p>@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+                <p>Estado: @DisplayLabels.FormatAppointmentStatus(item.Status)</p>
+            </article>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<Models.Appointments.AppointmentDto> _items = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _items = (await AppointmentApi.GetMyHistoryAsync()).ToList(); }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+}

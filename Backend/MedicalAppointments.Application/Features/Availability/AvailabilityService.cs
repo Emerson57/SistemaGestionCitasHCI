@@ -1,3 +1,4 @@
+using MedicalAppointments.Application.Abstractions.Identity;
 using MedicalAppointments.Application.Abstractions.Persistence;
 using MedicalAppointments.Application.Abstractions.Time;
 using MedicalAppointments.Application.Common.Mappings;
@@ -11,6 +12,7 @@ namespace MedicalAppointments.Application.Features.Availability;
 public sealed class AvailabilityService(
     IDoctorRepository doctorRepository,
     IDoctorAvailabilityRepository availabilityRepository,
+    ICurrentUserService currentUserService,
     IUnitOfWork unitOfWork,
     IDateTimeProvider dateTimeProvider) : IAvailabilityService
 {
@@ -104,5 +106,36 @@ public sealed class AvailabilityService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+
+    public async Task<Result<DoctorAvailabilityDto>> CreateForCurrentDoctorAsync(
+        CreateMyDoctorAvailabilityRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
+        {
+            return Result<DoctorAvailabilityDto>.Failure(Error.Unauthorized("User is not authenticated."));
+        }
+
+        if (!string.Equals(currentUserService.Role, "Doctor", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<DoctorAvailabilityDto>.Failure(Error.Forbidden("Current user is not a doctor."));
+        }
+
+        var doctor = await doctorRepository.GetByUserIdAsync(currentUserService.UserId, cancellationToken);
+        if (doctor is null)
+        {
+            return Result<DoctorAvailabilityDto>.Failure(Error.NotFound("Doctor profile not found."));
+        }
+
+        return await CreateAsync(
+            new CreateDoctorAvailabilityRequest
+            {
+                DoctorId = doctor.Id,
+                Date = request.Date,
+                StartTime = request.StartTime,
+                EndTime = request.EndTime
+            },
+            cancellationToken);
     }
 }

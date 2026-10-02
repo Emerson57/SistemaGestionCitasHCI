@@ -1,9 +1,57 @@
 ﻿@inherits LayoutComponentBase
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject JwtAuthenticationStateProvider AuthProvider
 
-@Body
+<a class="skip-link" href="#main-content">Saltar al contenido</a>
+<div class="app-shell">
+    <header class="app-header">
+        <div>
+            <strong>Sistema de Citas Médicas</strong>
+            <AuthorizeView>
+                <Authorized>
+                    <span class="text-muted" style="margin-left: 1rem;">@context.User.Identity?.Name</span>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+        <div style="display:flex; gap: 0.75rem; align-items:center;">
+            <button type="button" class="btn btn-secondary" @onclick="ToggleNav" aria-label="Abrir menú">Menú</button>
+            <AuthorizeView>
+                <Authorized>
+                    <button type="button" class="btn btn-secondary" @onclick="LogoutAsync">Cerrar sesión</button>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="btn btn-secondary" href="/login">Iniciar sesión</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </header>
 
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <aside class="app-sidebar @(_navOpen ? "open" : string.Empty)">
+        <AuthorizeView>
+            <Authorized>
+                @{
+                    var role = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+                }
+                <RoleNav Role="@role" />
+            </Authorized>
+        </AuthorizeView>
+    </aside>
+
+    <main id="main-content" class="app-content">
+        @Body
+    </main>
 </div>
+<ToastHost />
+
+@code {
+    private bool _navOpen;
+
+    private void ToggleNav() => _navOpen = !_navOpen;
+
+    private async Task LogoutAsync()
+    {
+        await AuthProvider.SignOutAsync();
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

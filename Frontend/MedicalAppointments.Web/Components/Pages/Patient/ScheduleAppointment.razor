@@ -1,0 +1,7 @@
+@page "/paciente/citas/nueva"
+@attribute [Authorize(Roles = AppRoles.Patient)]
+@rendermode InteractiveServer
+
+<PageTitle>Programar cita</PageTitle>
+<h1 class="page-title">Programar cita</h1>
+<AppointmentSchedulingFlow />

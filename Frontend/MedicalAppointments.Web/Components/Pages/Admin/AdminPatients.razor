@@ -1,0 +1,49 @@
+@page "/admin/pacientes"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveServer
+@inject IPatientApiService PatientApi
+
+<PageTitle>Pacientes</PageTitle>
+<h1 class="page-title">Pacientes</h1>
+
+@if (_loading) { <LoadingIndicator />; }
+else if (_items.Count == 0) { <EmptyState Title="Sin pacientes" Description="No hay pacientes registrados." />; }
+else
+{
+    @foreach (var patient in _items)
+    {
+        <article class="card" style="margin-bottom:0.75rem;">
+            <strong>@patient.FullName</strong>
+            <p class="text-muted">Tel: @patient.PhoneNumber</p>
+            @if (_expandedId == patient.Id)
+            {
+                <p>Dirección: @patient.Address</p>
+                <p>Nacimiento: @patient.BirthDate.ToString("d")</p>
+            }
+            <div class="hero-actions">
+                <button class="btn btn-secondary" @onclick="() => Toggle(patient.Id)">@(_expandedId == patient.Id ? "Ocultar detalle" : "Ver detalle")</button>
+                <button class="btn btn-danger" @onclick="() => DeactivateAsync(patient.Id)">Desactivar</button>
+            </div>
+        </article>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private List<Models.Patients.PatientDto> _items = [];
+    private Guid? _expandedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items = (await PatientApi.GetAllAsync()).ToList();
+        _loading = false;
+    }
+
+    private void Toggle(Guid id) => _expandedId = _expandedId == id ? null : id;
+
+    private async Task DeactivateAsync(Guid id)
+    {
+        await PatientApi.DeactivateAsync(id);
+        _items = (await PatientApi.GetAllAsync()).ToList();
+    }
+}

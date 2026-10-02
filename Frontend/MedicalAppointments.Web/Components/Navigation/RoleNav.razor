@@ -1,0 +1,32 @@
+@using MedicalAppointments.Web.Auth
+
+<nav aria-label="Navegación principal">
+    <ul class="nav-list">
+        @if (Role == AppRoles.Patient)
+        {
+            <li><NavLink href="/paciente" Match="NavLinkMatch.Prefix">Inicio</NavLink></li>
+            <li><NavLink href="/paciente/citas/nueva">Programar cita</NavLink></li>
+            <li><NavLink href="/paciente/citas">Mis citas</NavLink></li>
+            <li><NavLink href="/paciente/historial">Historial</NavLink></li>
+            <li><NavLink href="/paciente/perfil">Mi perfil</NavLink></li>
+        }
+        else if (Role == AppRoles.Doctor)
+        {
+            <li><NavLink href="/medico">Inicio</NavLink></li>
+            <li><NavLink href="/medico/agenda">Agenda</NavLink></li>
+            <li><NavLink href="/medico/disponibilidad">Disponibilidad</NavLink></li>
+        }
+        else if (Role == AppRoles.Administrator)
+        {
+            <li><NavLink href="/admin">Inicio</NavLink></li>
+            <li><NavLink href="/admin/especialidades">Especialidades</NavLink></li>
+            <li><NavLink href="/admin/medicos">Médicos</NavLink></li>
+            <li><NavLink href="/admin/pacientes">Pacientes</NavLink></li>
+        }
+    </ul>
+</nav>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Role { get; set; } = string.Empty;
+}

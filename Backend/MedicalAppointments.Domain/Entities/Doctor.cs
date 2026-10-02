@@ -95,6 +95,27 @@ public class Doctor
             createdAt);
     }
 
+    public void UpdateProfile(
+        string fullName,
+        string professionalLicense,
+        int specialtyId,
+        DateTimeOffset updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            throw new DomainException("Full name cannot be empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(professionalLicense))
+        {
+            throw new DomainException("Professional license cannot be empty.");
+        }
+
+        FullName = fullName.Trim();
+        ProfessionalLicense = professionalLicense.Trim();
+        ChangeSpecialty(specialtyId, updatedAt);
+    }
+
     public void ChangeSpecialty(int specialtyId, DateTimeOffset updatedAt)
     {
         if (specialtyId <= 0)

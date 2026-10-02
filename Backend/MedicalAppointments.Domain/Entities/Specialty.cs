@@ -11,9 +11,8 @@ public class Specialty
         Name = string.Empty;
     }
 
-    private Specialty(int id, string name, string? description, DateTimeOffset createdAt)
+    private Specialty(string name, string? description, DateTimeOffset createdAt)
     {
-        Id = id;
         Name = name;
         Description = description;
         IsActive = true;
@@ -34,14 +33,29 @@ public class Specialty
 
     public IReadOnlyCollection<Doctor> Doctors => _doctors.AsReadOnly();
 
-    public static Specialty Create(int id, string name, string? description, DateTimeOffset createdAt)
+    public static Specialty Create(string name, string? description, DateTimeOffset createdAt)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new DomainException("Specialty name cannot be empty.");
         }
 
-        return new Specialty(id, name.Trim(), description?.Trim(), createdAt);
+        return new Specialty(name.Trim(), description?.Trim(), createdAt);
+    }
+
+    public void AssignIdentity(int id)
+    {
+        if (id <= 0)
+        {
+            throw new DomainException("Specialty id must be greater than zero.");
+        }
+
+        if (Id != 0 && Id != id)
+        {
+            throw new DomainException("Specialty identity has already been assigned.");
+        }
+
+        Id = id;
     }
 
     public void Update(string name, string? description, DateTimeOffset updatedAt)

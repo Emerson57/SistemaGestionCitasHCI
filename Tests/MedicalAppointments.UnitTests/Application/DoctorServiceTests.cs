@@ -1,3 +1,5 @@
+using MedicalAppointments.Application.Abstractions.Identity;
+using MedicalAppointments.Application.Common.Results;
 using MedicalAppointments.Application.DTOs.Doctors;
 using MedicalAppointments.Application.Features.Doctors;
 using MedicalAppointments.UnitTests.Application.Fakes;
@@ -17,13 +19,15 @@ public class DoctorServiceTests
         var service = new DoctorService(
             doctorRepository,
             specialtyRepository,
+            new FakeIdentityService(),
             new FakeUnitOfWork(),
             new FakeDateTimeProvider(Now));
 
         var result = await service.CreateAsync(
             new CreateDoctorRequest
             {
-                UserId = "doctor-user",
+                Email = "doctor@example.com",
+                InitialPassword = "Password123!",
                 FullName = "Dr. Smith",
                 ProfessionalLicense = "LIC-001",
                 SpecialtyId = 99

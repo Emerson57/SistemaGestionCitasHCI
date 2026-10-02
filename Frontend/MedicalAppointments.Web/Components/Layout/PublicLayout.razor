@@ -1,0 +1,16 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content">Saltar al contenido</a>
+<div class="public-layout">
+    <header class="app-header">
+        <strong>Sistema de Citas Médicas</strong>
+        <div style="display:flex; gap: 0.75rem;">
+            <a class="btn btn-secondary" href="/login">Iniciar sesión</a>
+            <a class="btn btn-primary" href="/registro">Registrarse</a>
+        </div>
+    </header>
+    <main id="main-content" class="public-main">
+        @Body
+    </main>
+</div>
+<ToastHost />

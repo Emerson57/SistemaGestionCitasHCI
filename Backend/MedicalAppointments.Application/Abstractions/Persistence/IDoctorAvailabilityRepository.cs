@@ -10,6 +10,10 @@ public interface IDoctorAvailabilityRepository
         Guid doctorId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<DoctorAvailability>> GetAllByDoctorAsync(
+        Guid doctorId,
+        CancellationToken cancellationToken);
+
     Task<bool> HasOverlappingSlotAsync(
         Guid doctorId,
         DateOnly date,

@@ -25,8 +25,7 @@ public sealed class InMemoryAppointmentRepository : IAppointmentRepository
             && a.AppointmentDateTime == appointmentDateTime
             && (excludeAppointmentId is null || a.Id != excludeAppointmentId)
             && a.Status is AppointmentStatus.Scheduled
-                or AppointmentStatus.Confirmed
-                or AppointmentStatus.Rescheduled);
+                or AppointmentStatus.Confirmed);
 
         return Task.FromResult(exists);
     }

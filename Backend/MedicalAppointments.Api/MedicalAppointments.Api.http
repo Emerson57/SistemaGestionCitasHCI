@@ -1,6 +1,50 @@
-@MedicalAppointments.Api_HostAddress = http://localhost:5119
+@MedicalAppointments.Api_HostAddress = https://localhost:7211
+@token = YOUR_TOKEN_HERE
 
-GET {{MedicalAppointments.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Register patient
+POST {{MedicalAppointments.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
 
-###
+{
+  "fullName": "Maria Lopez",
+  "email": "maria@example.com",
+  "password": "PatientPassword123!",
+  "birthDate": "1995-03-15",
+  "address": "Calle 123",
+  "phoneNumber": "555-0100",
+  "sex": 1,
+  "disability": null,
+  "maritalStatus": 0
+}
+
+### Login
+POST {{MedicalAppointments.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "maria@example.com",
+  "password": "PatientPassword123!"
+}
+
+### List specialties
+GET {{MedicalAppointments.Api_HostAddress}}/api/specialties
+Authorization: Bearer {{token}}
+
+### List doctors
+GET {{MedicalAppointments.Api_HostAddress}}/api/doctors
+Authorization: Bearer {{token}}
+
+### Schedule appointment
+POST {{MedicalAppointments.Api_HostAddress}}/api/appointments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "doctorId": "00000000-0000-0000-0000-000000000001",
+  "appointmentDateTime": "2026-12-01T10:00:00Z",
+  "reason": "Consulta general"
+}
+
+### My appointments
+GET {{MedicalAppointments.Api_HostAddress}}/api/appointments/my
+Authorization: Bearer {{token}}

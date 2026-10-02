@@ -1,0 +1,163 @@
+@page "/registro"
+@layout PublicLayout
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+@inject IAuthApiService AuthApi
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Registro de paciente</PageTitle>
+<h1 class="page-title">Crear cuenta de paciente</h1>
+
+<EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="registerForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="validation-summary" />
+
+    <fieldset class="card" style="margin-bottom: 1rem;">
+        <legend><strong>Datos personales</strong></legend>
+        <div class="form-field">
+            <label for="fullName">Nombre completo *</label>
+            <InputText id="fullName" @bind-Value="_model.FullName" />
+            <ValidationMessage For="() => _model.FullName" class="field-error" />
+        </div>
+        <div class="form-field">
+            <label for="birthDate">Fecha de nacimiento *</label>
+            <InputDate id="birthDate" @bind-Value="_birthDate" />
+            <ValidationMessage For="() => _birthDate" class="field-error" />
+        </div>
+        <div class="form-field">
+            <label for="address">Dirección *</label>
+            <InputText id="address" @bind-Value="_model.Address" />
+        </div>
+        <div class="form-field">
+            <label for="phone">Teléfono *</label>
+            <InputText id="phone" @bind-Value="_model.PhoneNumber" />
+        </div>
+        <div class="form-field">
+            <label for="sex">Sexo *</label>
+            <InputSelect id="sex" @bind-Value="_model.Sex">
+                @foreach (Sex value in Enum.GetValues<Sex>())
+                {
+                    <option value="@value">@DisplayLabels.FormatSex(value)</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="form-field">
+            <label for="disability">Discapacidad</label>
+            <InputText id="disability" @bind-Value="_model.Disability" />
+        </div>
+        <div class="form-field">
+            <label for="marital">Estado civil *</label>
+            <InputSelect id="marital" @bind-Value="_model.MaritalStatus">
+                @foreach (MaritalStatus value in Enum.GetValues<MaritalStatus>())
+                {
+                    <option value="@value">@DisplayLabels.FormatMaritalStatus(value)</option>
+                }
+            </InputSelect>
+        </div>
+    </fieldset>
+
+    <fieldset class="card">
+        <legend><strong>Acceso</strong></legend>
+        <div class="form-field">
+            <label for="email">Correo electrónico *</label>
+            <InputText id="email" @bind-Value="_model.Email" autocomplete="email" />
+            <ValidationMessage For="() => _model.Email" class="field-error" />
+        </div>
+        <div class="form-field">
+            <label for="password">Contraseña *</label>
+            <InputText id="password" type="password" @bind-Value="_model.Password" autocomplete="new-password" />
+            <small class="text-muted">Mínimo 8 caracteres, con mayúsculas, minúsculas y números.</small>
+        </div>
+        <div class="form-field">
+            <label for="confirm">Confirmar contraseña *</label>
+            <InputText id="confirm" type="password" @bind-Value="_model.ConfirmPassword" autocomplete="new-password" />
+        </div>
+        <div class="form-field">
+            <InputCheckbox @bind-Value="_model.AcceptPolicy" id="policy" />
+            <label for="policy">Acepto el tratamiento de mis datos para gestionar citas médicas.</label>
+        </div>
+    </fieldset>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="validation-summary" role="alert">@_error</div>
+    }
+
+    <button class="btn btn-primary" type="submit" disabled="@_loading">@(_loading ? "Registrando…" : "Crear cuenta")</button>
+</EditForm>
+
+@code {
+    private readonly RegisterFormModel _model = new();
+    private DateTime? _birthDate = DateTime.Today.AddYears(-25);
+    private bool _loading;
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        _error = null;
+        if (!_model.AcceptPolicy)
+        {
+            _error = "Debes aceptar la política de datos para continuar.";
+            return;
+        }
+
+        if (_birthDate is null || _birthDate.Value.Date >= DateTime.Today)
+        {
+            _error = "La fecha de nacimiento debe ser anterior a hoy.";
+            return;
+        }
+
+        if (!string.Equals(_model.Password, _model.ConfirmPassword, StringComparison.Ordinal))
+        {
+            _error = "Las contraseñas no coinciden.";
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var response = await AuthApi.RegisterAsync(new Models.Authentication.RegisterPatientRequest
+            {
+                FullName = _model.FullName.Trim(),
+                Email = _model.Email.Trim(),
+                Password = _model.Password,
+                BirthDate = DateOnly.FromDateTime(_birthDate.Value),
+                Address = _model.Address.Trim(),
+                PhoneNumber = _model.PhoneNumber.Trim(),
+                Sex = _model.Sex,
+                Disability = string.IsNullOrWhiteSpace(_model.Disability) ? null : _model.Disability.Trim(),
+                MaritalStatus = _model.MaritalStatus
+            });
+            await AuthProvider.SignInAsync(response);
+            Navigation.NavigateTo("/paciente", forceLoad: true);
+        }
+        catch (ApiException ex)
+        {
+            _error = ApiErrorTranslator.ToUserMessage(ex);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class RegisterFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string FullName { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(8)]
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public Sex Sex { get; set; } = Sex.Female;
+        public string? Disability { get; set; }
+        public MaritalStatus MaritalStatus { get; set; } = MaritalStatus.Single;
+        public bool AcceptPolicy { get; set; }
+    }
+}

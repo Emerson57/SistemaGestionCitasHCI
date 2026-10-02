@@ -1,0 +1,15 @@
+@inject NotificationService Notifications
+@implements IDisposable
+
+@if (!string.IsNullOrWhiteSpace(Notifications.Message))
+{
+    <div class="toast @Notifications.Type" role="status" aria-live="polite">
+        @Notifications.Message
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => Notifications.OnChange += StateHasChanged;
+
+    public void Dispose() => Notifications.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,13 @@
+<div class="card" role="status" aria-live="polite">
+    <div class="loader" aria-hidden="true"></div>
+    <p class="text-muted">@(_message)</p>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Cargando…";
+
+    private string _message = "Cargando…";
+
+    protected override void OnParametersSet() => _message = Message;
+}

@@ -22,9 +22,14 @@ public static class DoctorRequestValidator
             return Result.Failure(Error.Validation("A valid specialty is required."));
         }
 
-        if (string.IsNullOrWhiteSpace(request.UserId))
+        if (string.IsNullOrWhiteSpace(request.Email))
         {
-            return Result.Failure(Error.Validation("User id is required."));
+            return Result.Failure(Error.Validation("Email is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.InitialPassword))
+        {
+            return Result.Failure(Error.Validation("Initial password is required."));
         }
 
         return Result.Success();

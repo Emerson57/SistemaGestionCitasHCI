@@ -55,13 +55,10 @@ public sealed class SpecialtyService(
             return Result<SpecialtyDto>.Failure(Error.Conflict("A specialty with the same name already exists."));
         }
 
-        var nextId = await GetNextSpecialtyIdAsync(cancellationToken);
-
         Specialty specialty;
         try
         {
             specialty = Specialty.Create(
-                nextId,
                 normalizedName,
                 request.Description,
                 dateTimeProvider.UtcNow);
@@ -129,11 +126,5 @@ public sealed class SpecialtyService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
-    }
-
-    private async Task<int> GetNextSpecialtyIdAsync(CancellationToken cancellationToken)
-    {
-        var all = await specialtyRepository.GetAllAsync(cancellationToken);
-        return all.Count == 0 ? 1 : all.Max(s => s.Id) + 1;
     }
 }

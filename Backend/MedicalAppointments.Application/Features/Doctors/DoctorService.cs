@@ -1,3 +1,4 @@
+using MedicalAppointments.Application.Abstractions.Identity;
 using MedicalAppointments.Application.Abstractions.Persistence;
 using MedicalAppointments.Application.Abstractions.Time;
 using MedicalAppointments.Application.Common.Mappings;
@@ -12,6 +13,7 @@ namespace MedicalAppointments.Application.Features.Doctors;
 public sealed class DoctorService(
     IDoctorRepository doctorRepository,
     ISpecialtyRepository specialtyRepository,
+    IIdentityService identityService,
     IUnitOfWork unitOfWork,
     IDateTimeProvider dateTimeProvider) : IDoctorService
 {
@@ -72,12 +74,23 @@ public sealed class DoctorService(
             return Result<DoctorDto>.Failure(Error.NotFound("Specialty not found."));
         }
 
+        var userResult = await identityService.CreateDoctorUserAsync(
+            request.Email,
+            request.InitialPassword,
+            request.FullName,
+            cancellationToken);
+
+        if (userResult.IsFailure)
+        {
+            return Result<DoctorDto>.Failure(userResult.Error!);
+        }
+
         Doctor doctor;
         try
         {
             doctor = Doctor.Create(
                 Guid.NewGuid(),
-                request.UserId,
+                userResult.Value!,
                 request.SpecialtyId,
                 request.FullName,
                 request.ProfessionalLicense,
@@ -119,7 +132,11 @@ public sealed class DoctorService(
 
         try
         {
-            doctor.ChangeSpecialty(request.SpecialtyId, dateTimeProvider.UtcNow);
+            doctor.UpdateProfile(
+                request.FullName,
+                request.ProfessionalLicense,
+                request.SpecialtyId,
+                dateTimeProvider.UtcNow);
             doctorRepository.Update(doctor);
         }
         catch (DomainException ex)

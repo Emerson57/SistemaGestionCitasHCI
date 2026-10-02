@@ -13,7 +13,9 @@ public class SpecialtyServiceTests
     public async Task CreateAsync_RejectsDuplicateSpecialtyName()
     {
         var repository = new InMemorySpecialtyRepository();
-        repository.Seed(Specialty.Create(1, "Cardiology", null, Now));
+        var existing = Specialty.Create("Cardiology", null, Now);
+        existing.AssignIdentity(1);
+        repository.Seed(existing);
 
         var service = new SpecialtyService(repository, new FakeUnitOfWork(), new FakeDateTimeProvider(Now));
 

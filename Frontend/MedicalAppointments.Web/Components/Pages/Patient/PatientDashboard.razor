@@ -1,0 +1,50 @@
+@page "/paciente"
+@attribute [Authorize(Roles = AppRoles.Patient)]
+@rendermode InteractiveServer
+@inject IAppointmentApiService AppointmentApi
+
+<PageTitle>Panel del paciente</PageTitle>
+<h1 class="page-title">Hola, bienvenido/a</h1>
+
+@if (_loading) { <LoadingIndicator />; }
+else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
+else
+{
+    @if (_next is not null)
+    {
+        <article class="card" style="margin-bottom: 1rem;">
+            <h2 class="section-title">Próxima cita</h2>
+            <p>@_next.DoctorName — @_next.SpecialtyName</p>
+            <p>@_next.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+            <p>Estado: @DisplayLabels.FormatAppointmentStatus(_next.Status)</p>
+        </article>
+    }
+
+    <div class="hero-actions">
+        <a class="btn btn-primary" href="/paciente/citas/nueva">Programar cita</a>
+        <a class="btn btn-secondary" href="/paciente/citas">Mis citas</a>
+        <a class="btn btn-secondary" href="/paciente/historial">Historial</a>
+        <a class="btn btn-secondary" href="/paciente/perfil">Mi perfil</a>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private Models.Appointments.AppointmentDto? _next;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var items = await AppointmentApi.GetMyAppointmentsAsync();
+            _next = items.OrderBy(a => a.AppointmentDateTime).FirstOrDefault();
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+}

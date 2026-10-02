@@ -1,0 +1,19 @@
+<div class="card" role="status">
+    <h2 class="section-title">@Title</h2>
+    <p class="text-muted">@Description</p>
+    @if (ChildContent is not null)
+    {
+        <div style="margin-top: var(--space-md);">@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

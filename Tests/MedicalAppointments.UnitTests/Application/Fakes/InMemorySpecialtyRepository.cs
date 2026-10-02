@@ -9,6 +9,12 @@ public sealed class InMemorySpecialtyRepository : ISpecialtyRepository
 
     public Task AddAsync(Specialty specialty, CancellationToken cancellationToken)
     {
+        if (specialty.Id == 0)
+        {
+            var nextId = _specialties.Count == 0 ? 1 : _specialties.Max(s => s.Id) + 1;
+            specialty.AssignIdentity(nextId);
+        }
+
         _specialties.Add(specialty);
         return Task.CompletedTask;
     }
@@ -33,5 +39,14 @@ public sealed class InMemorySpecialtyRepository : ISpecialtyRepository
     {
     }
 
-    public void Seed(Specialty specialty) => _specialties.Add(specialty);
+    public void Seed(Specialty specialty)
+    {
+        if (specialty.Id == 0)
+        {
+            var nextId = _specialties.Count == 0 ? 1 : _specialties.Max(s => s.Id) + 1;
+            specialty.AssignIdentity(nextId);
+        }
+
+        _specialties.Add(specialty);
+    }
 }

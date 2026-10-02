@@ -1,0 +1,33 @@
+@page "/medico"
+@attribute [Authorize(Roles = AppRoles.Doctor)]
+@rendermode InteractiveServer
+@inject IDoctorApiService DoctorApi
+
+<PageTitle>Panel del médico</PageTitle>
+<h1 class="page-title">Panel del médico</h1>
+
+@if (_loading) { <LoadingIndicator />; }
+else
+{
+    <p class="text-muted">Citas programadas hoy: @_todayCount</p>
+    <p class="text-muted">Próximas citas: @_upcomingCount</p>
+    <div class="hero-actions">
+        <a class="btn btn-primary" href="/medico/agenda">Ver agenda</a>
+        <a class="btn btn-secondary" href="/medico/disponibilidad">Gestionar disponibilidad</a>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _todayCount;
+    private int _upcomingCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var agenda = await DoctorApi.GetMyAgendaAsync();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        _todayCount = agenda.Count(a => DateOnly.FromDateTime(a.AppointmentDateTime.LocalDateTime) == today);
+        _upcomingCount = agenda.Count(a => a.AppointmentDateTime >= DateTimeOffset.Now);
+        _loading = false;
+    }
+}

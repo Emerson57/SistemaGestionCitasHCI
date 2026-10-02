@@ -1,0 +1,11 @@
+@page "/admin"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveServer
+
+<PageTitle>Administración</PageTitle>
+<h1 class="page-title">Panel de administración</h1>
+<div class="grid-cards three">
+    <a class="card" href="/admin/especialidades"><h2 class="section-title">Especialidades</h2><p class="text-muted">Gestionar catálogo médico.</p></a>
+    <a class="card" href="/admin/medicos"><h2 class="section-title">Médicos</h2><p class="text-muted">Registrar y mantener médicos.</p></a>
+    <a class="card" href="/admin/pacientes"><h2 class="section-title">Pacientes</h2><p class="text-muted">Consultar usuarios pacientes.</p></a>
+</div>

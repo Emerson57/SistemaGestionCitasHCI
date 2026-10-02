@@ -1,0 +1,24 @@
+@page "/paciente/citas/{Id:guid}/reprogramar"
+@attribute [Authorize(Roles = AppRoles.Patient)]
+@rendermode InteractiveServer
+@inject IAppointmentApiService AppointmentApi
+
+<PageTitle>Reprogramar cita</PageTitle>
+<h1 class="page-title">Reprogramar cita</h1>
+
+@if (_loading) { <LoadingIndicator />; }
+else if (_appointment is null) { <ErrorState Message="No se encontró la cita." />; }
+else { <AppointmentSchedulingFlow RescheduleAppointment="_appointment" />; }
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private bool _loading = true;
+    private Models.Appointments.AppointmentDto? _appointment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var items = await AppointmentApi.GetMyAppointmentsAsync();
+        _appointment = items.FirstOrDefault(a => a.Id == Id);
+        _loading = false;
+    }
+}

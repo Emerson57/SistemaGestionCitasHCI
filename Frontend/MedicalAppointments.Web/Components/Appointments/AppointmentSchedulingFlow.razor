@@ -1,0 +1,271 @@
+@inject ISpecialtyApiService SpecialtyApi
+@inject IDoctorApiService DoctorApi
+@inject IAvailabilityApiService AvailabilityApi
+@inject IAppointmentApiService AppointmentApi
+
+@if (_step == 5 && _created is not null)
+{
+    <div class="card" role="status">
+        <h2 class="section-title">@(RescheduleAppointment is null ? "Cita programada correctamente" : "Cita reprogramada correctamente")</h2>
+        <p><strong>Médico:</strong> @_created.DoctorName</p>
+        <p><strong>Especialidad:</strong> @_created.SpecialtyName</p>
+        <p><strong>Fecha y hora:</strong> @_created.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="/paciente/citas">Ver mis citas</a>
+            <a class="btn btn-secondary" href="/paciente">Volver al inicio</a>
+        </div>
+    </div>
+}
+else
+{
+<div class="wizard-steps" aria-label="Pasos del proceso">
+    @for (var i = 1; i <= 4; i++)
+    {
+        <span class="wizard-step @(i == _step ? "active" : _step > i ? "done" : string.Empty)">Paso @i — @StepTitle(i)</span>
+    }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="validation-summary" role="alert">@_error</div>
+}
+
+@if (_step == 1)
+{
+    if (_loading) { <LoadingIndicator Message="Cargando especialidades…" />; }
+    else if (_specialties.Count == 0) { <EmptyState Title="Sin especialidades" Description="No hay especialidades activas en este momento." />; }
+    else
+    {
+        <div class="grid-cards three">
+            @foreach (var specialty in _specialties)
+            {
+                <button type="button" class="card card-selectable @(_selectedSpecialtyId == specialty.Id ? "selected" : string.Empty)"
+                        aria-pressed="@(_selectedSpecialtyId == specialty.Id)"
+                        @onclick="() => SelectSpecialty(specialty.Id)">
+                    <h3 class="section-title">@specialty.Name</h3>
+                    <p class="text-muted">@(specialty.Description ?? "Consulta médica especializada")</p>
+                </button>
+            }
+        </div>
+        <button class="btn btn-primary" disabled="@(_selectedSpecialtyId is null)" @onclick="GoDoctorStep">Continuar</button>
+    }
+}
+else if (_step == 2)
+{
+    if (_loading) { <LoadingIndicator Message="Cargando médicos…" />; }
+    else if (_doctors.Count == 0) { <EmptyState Title="Sin médicos" Description="No hay médicos para esta especialidad."><button class="btn btn-secondary" @onclick="() => _step = 1">Elegir otra especialidad</button></EmptyState>; }
+    else
+    {
+        <div class="grid-cards">
+            @foreach (var doctor in _doctors)
+            {
+                <button type="button" class="card card-selectable @(_selectedDoctorId == doctor.Id ? "selected" : string.Empty)"
+                        @onclick="() => _selectedDoctorId = doctor.Id">
+                    <h3 class="section-title">@doctor.FullName</h3>
+                    <p class="text-muted">@doctor.SpecialtyName</p>
+                    <p class="text-muted">Licencia: @doctor.ProfessionalLicense</p>
+                </button>
+            }
+        </div>
+        <div class="hero-actions">
+            <button class="btn btn-secondary" @onclick="() => _step = 1">Volver</button>
+            <button class="btn btn-primary" disabled="@(_selectedDoctorId is null)" @onclick="GoDateStep">Continuar</button>
+        </div>
+    }
+}
+else if (_step == 3)
+{
+    if (_loading) { <LoadingIndicator Message="Cargando horarios…" />; }
+    else if (_availableDates.Count == 0) { <EmptyState Title="Sin horarios" Description="Este médico no tiene disponibilidad."><button class="btn btn-secondary" @onclick="() => _step = 2">Elegir otro médico</button></EmptyState>; }
+    else
+    {
+        <div class="form-field">
+            <label for="date">Fecha</label>
+            <InputSelect id="date" @bind-Value="_selectedDateString" @bind-Value:after="LoadTimes">
+                @foreach (var date in _availableDates)
+                {
+                    <option value="@date.ToString("O")">@date.ToString("dddd, dd MMM yyyy")</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="time-grid" role="listbox" aria-label="Horarios disponibles">
+            @foreach (var time in _times)
+            {
+                var selected = _selectedDateTime == time;
+                <button type="button" class="time-slot @(selected ? "selected" : string.Empty)" role="option" aria-selected="@selected"
+                        disabled="@(time <= DateTimeOffset.UtcNow)"
+                        @onclick="() => _selectedDateTime = time">
+                    @time.ToLocalTime().ToString("HH:mm")
+                </button>
+            }
+        </div>
+        <div class="form-field">
+            <label for="reason">Motivo (opcional)</label>
+            <InputTextArea id="reason" @bind-Value="_reason" rows="3" />
+        </div>
+        <div class="hero-actions">
+            <button class="btn btn-secondary" @onclick="() => _step = 2">Volver</button>
+            <button class="btn btn-primary" disabled="@(_selectedDateTime is null)" @onclick="() => _step = 4">Revisar</button>
+        </div>
+    }
+}
+else if (_step == 4)
+{
+    <div class="card">
+        <h2 class="section-title">Revisión</h2>
+        @if (RescheduleAppointment is not null)
+        {
+            <p><strong>Fecha anterior:</strong> @RescheduleAppointment.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+        }
+        <p><strong>Especialidad:</strong> @_selectedSpecialtyName</p>
+        <p><strong>Médico:</strong> @_selectedDoctorName</p>
+        <p><strong>Nueva fecha y hora:</strong> @_selectedDateTime?.ToLocalTime().ToString("f")</p>
+        @if (!string.IsNullOrWhiteSpace(_reason))
+        {
+            <p><strong>Motivo:</strong> @_reason</p>
+        }
+        <div class="hero-actions">
+            <button class="btn btn-secondary" @onclick="() => _step = 3">Volver</button>
+            <button class="btn btn-primary" disabled="@_loading" @onclick="ConfirmAsync">@(_loading ? "Guardando…" : RescheduleAppointment is null ? "Confirmar cita" : "Confirmar reprogramación")</button>
+        </div>
+    </div>
+}
+}
+
+@code {
+    [Parameter] public Models.Appointments.AppointmentDto? RescheduleAppointment { get; set; }
+
+    private int _step = 1;
+    private bool _loading;
+    private string? _error;
+    private List<Models.Specialties.SpecialtyDto> _specialties = [];
+    private List<Models.Doctors.DoctorDto> _doctors = [];
+    private List<Models.Availability.DoctorAvailabilityDto> _slots = [];
+    private List<DateOnly> _availableDates = [];
+    private List<DateTimeOffset> _times = [];
+    private int? _selectedSpecialtyId;
+    private Guid? _selectedDoctorId;
+    private string? _selectedSpecialtyName;
+    private string? _selectedDoctorName;
+    private string _selectedDateString = string.Empty;
+    private DateTimeOffset? _selectedDateTime;
+    private string? _reason;
+    private Models.Appointments.AppointmentDto? _created;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _specialties = (await SpecialtyApi.GetActiveAsync()).ToList();
+            if (RescheduleAppointment is not null)
+            {
+                _selectedSpecialtyId = RescheduleAppointment.SpecialtyId;
+                _selectedDoctorId = RescheduleAppointment.DoctorId;
+                _selectedSpecialtyName = RescheduleAppointment.SpecialtyName;
+                _selectedDoctorName = RescheduleAppointment.DoctorName;
+                _step = 3;
+                await LoadAvailabilityAsync();
+            }
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+
+    private static string StepTitle(int step) => step switch
+    {
+        1 => "Especialidad",
+        2 => "Médico",
+        3 => "Fecha y horario",
+        4 => "Revisión",
+        _ => string.Empty
+    };
+
+    private void SelectSpecialty(int id)
+    {
+        _selectedSpecialtyId = id;
+        _selectedSpecialtyName = _specialties.First(s => s.Id == id).Name;
+    }
+
+    private async Task GoDoctorStep()
+    {
+        _step = 2;
+        _loading = true;
+        _error = null;
+        try
+        {
+            _doctors = (await DoctorApi.GetAllAsync(_selectedSpecialtyId)).Where(d => d.IsActive).ToList();
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+
+    private async Task GoDateStep()
+    {
+        _selectedDoctorName = _doctors.First(d => d.Id == _selectedDoctorId).FullName;
+        _step = 3;
+        await LoadAvailabilityAsync();
+    }
+
+    private async Task LoadAvailabilityAsync()
+    {
+        _loading = true;
+        try
+        {
+            _slots = (await AvailabilityApi.GetByDoctorAsync(_selectedDoctorId!.Value)).ToList();
+            _availableDates = AppointmentSlotHelper.GetAvailableDates(_slots).ToList();
+            if (_availableDates.Count > 0)
+            {
+                _selectedDateString = _availableDates[0].ToString("O");
+                LoadTimes();
+            }
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+
+    private void LoadTimes()
+    {
+        if (!DateOnly.TryParse(_selectedDateString, out var date))
+        {
+            return;
+        }
+
+        _times = AppointmentSlotHelper.GetTimesForDate(_slots, date, TimeSpan.FromHours(1)).ToList();
+        _selectedDateTime = _times.FirstOrDefault(t => t > DateTimeOffset.UtcNow);
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (_selectedDateTime is null || _selectedDoctorId is null)
+        {
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        try
+        {
+            if (RescheduleAppointment is null)
+            {
+                _created = await AppointmentApi.ScheduleAsync(new Models.Appointments.ScheduleAppointmentRequest
+                {
+                    DoctorId = _selectedDoctorId.Value,
+                    AppointmentDateTime = _selectedDateTime.Value,
+                    Reason = _reason
+                });
+            }
+            else
+            {
+                _created = await AppointmentApi.RescheduleAsync(RescheduleAppointment.Id, new Models.Appointments.RescheduleAppointmentRequest
+                {
+                    AppointmentDateTime = _selectedDateTime.Value
+                });
+            }
+
+            _step = 5;
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+}

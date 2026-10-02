@@ -1,0 +1,83 @@
+@page "/admin/especialidades"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveServer
+@inject ISpecialtyApiService SpecialtyApi
+
+<PageTitle>Especialidades</PageTitle>
+<h1 class="page-title">Especialidades</h1>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="section-title">@(_editId is null ? "Crear especialidad" : "Editar especialidad")</h2>
+    <div class="form-field"><label>Nombre</label><InputText @bind-Value="_name" /></div>
+    <div class="form-field"><label>Descripción</label><InputText @bind-Value="_description" /></div>
+    <button class="btn btn-primary" @onclick="SaveAsync">@(_editId is null ? "Crear" : "Guardar")</button>
+    @if (_editId is not null) { <button class="btn btn-secondary" @onclick="ResetForm">Cancelar edición</button> }
+</div>
+
+@if (_loading) { <LoadingIndicator />; }
+else
+{
+    @foreach (var item in _items)
+    {
+        <article class="card" style="margin-bottom:0.75rem;">
+            <strong>@item.Name</strong>
+            <p class="text-muted">@item.Description</p>
+            <div class="hero-actions">
+                <button class="btn btn-secondary" @onclick="() => Edit(item)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => DeactivateAsync(item.Id)">Desactivar</button>
+            </div>
+        </article>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private List<Models.Specialties.SpecialtyDto> _items = [];
+    private int? _editId;
+    private string _name = string.Empty;
+    private string? _description;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _items = (await SpecialtyApi.GetActiveAsync()).ToList();
+        _loading = false;
+    }
+
+    private void Edit(Models.Specialties.SpecialtyDto item)
+    {
+        _editId = item.Id;
+        _name = item.Name;
+        _description = item.Description;
+    }
+
+    private void ResetForm()
+    {
+        _editId = null;
+        _name = string.Empty;
+        _description = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editId is null)
+        {
+            await SpecialtyApi.CreateAsync(new Models.Specialties.CreateSpecialtyRequest { Name = _name, Description = _description });
+        }
+        else
+        {
+            await SpecialtyApi.UpdateAsync(_editId.Value, new Models.Specialties.UpdateSpecialtyRequest { Name = _name, Description = _description });
+        }
+
+        ResetForm();
+        await LoadAsync();
+    }
+
+    private async Task DeactivateAsync(int id)
+    {
+        await SpecialtyApi.DeactivateAsync(id);
+        await LoadAsync();
+    }
+}

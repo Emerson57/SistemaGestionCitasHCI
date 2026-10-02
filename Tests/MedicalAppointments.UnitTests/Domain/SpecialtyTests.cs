@@ -11,7 +11,7 @@ public class SpecialtyTests
     public void Create_WithEmptyName_ThrowsDomainException()
     {
         var exception = Assert.Throws<DomainException>(() =>
-            Specialty.Create(1, "   ", "Description", Now));
+            Specialty.Create("   ", "Description", Now));
 
         Assert.Contains("name", exception.Message, StringComparison.OrdinalIgnoreCase);
     }

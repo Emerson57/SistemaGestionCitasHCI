@@ -1,0 +1,62 @@
+@page "/medico/agenda"
+@attribute [Authorize(Roles = AppRoles.Doctor)]
+@rendermode InteractiveServer
+@inject IDoctorApiService DoctorApi
+@inject IAppointmentApiService AppointmentApi
+
+<PageTitle>Agenda médica</PageTitle>
+<h1 class="page-title">Mi agenda</h1>
+
+@if (_loading) { <LoadingIndicator />; }
+else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
+else if (_items.Count == 0) { <EmptyState Title="Agenda vacía" Description="No tienes citas asignadas." />; }
+else
+{
+    @foreach (var item in _items.OrderBy(i => i.AppointmentDateTime))
+    {
+        <article class="card" style="margin-bottom: 1rem;">
+            <h2 class="section-title">@item.PatientName</h2>
+            <p>@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+            <p>Estado: @DisplayLabels.FormatAppointmentStatus(item.Status)</p>
+            @if (!string.IsNullOrWhiteSpace(item.Reason)) { <p class="text-muted">Motivo: @item.Reason</p> }
+            <div class="hero-actions">
+                @if (item.Status == AppointmentStatus.Scheduled)
+                {
+                    <button class="btn btn-primary" @onclick="() => ConfirmAsync(item.Id)">Confirmar</button>
+                }
+                @if (item.Status == AppointmentStatus.Confirmed)
+                {
+                    <button class="btn btn-secondary" @onclick="() => CompleteAsync(item.Id)">Completar</button>
+                }
+            </div>
+        </article>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<Models.Appointments.AppointmentDto> _items = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _items = (await DoctorApi.GetMyAgendaAsync()).ToList(); }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+
+    private async Task ConfirmAsync(Guid id)
+    {
+        try { await AppointmentApi.ConfirmAsync(id); await LoadAsync(); }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+    }
+
+    private async Task CompleteAsync(Guid id)
+    {
+        try { await AppointmentApi.CompleteAsync(id); await LoadAsync(); }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+    }
+}

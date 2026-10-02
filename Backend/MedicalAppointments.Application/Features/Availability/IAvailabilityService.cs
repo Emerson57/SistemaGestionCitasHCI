@@ -14,4 +14,8 @@ public interface IAvailabilityService
         CancellationToken cancellationToken);
 
     Task<Result> MarkUnavailableAsync(Guid availabilityId, CancellationToken cancellationToken);
+
+    Task<Result<DoctorAvailabilityDto>> CreateForCurrentDoctorAsync(
+        CreateMyDoctorAvailabilityRequest request,
+        CancellationToken cancellationToken);
 }

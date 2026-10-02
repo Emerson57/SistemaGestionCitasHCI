@@ -93,13 +93,37 @@ public class Appointment
 
     public void Reschedule(DateTimeOffset newAppointmentDateTime, string changedBy, DateTimeOffset changedAt)
     {
+        if (string.IsNullOrWhiteSpace(changedBy))
+        {
+            throw new DomainException("Changed by cannot be empty.");
+        }
+
         if (newAppointmentDateTime == default)
         {
             throw new DomainException("Appointment date and time must be specified.");
         }
 
-        ChangeStatus(AppointmentStatus.Rescheduled, changedBy, changedAt);
+        if (Status is not AppointmentStatus.Scheduled and not AppointmentStatus.Confirmed)
+        {
+            throw new DomainException($"Cannot reschedule appointment in {Status} status.");
+        }
+
+        var activeStatus = Status;
+        var previousDateTime = AppointmentDateTime;
         AppointmentDateTime = newAppointmentDateTime;
+        UpdatedAt = changedAt;
+
+        var historyEntry = AppointmentStatusHistory.CreateReschedule(
+            Guid.NewGuid(),
+            Id,
+            activeStatus,
+            previousDateTime,
+            newAppointmentDateTime,
+            changedAt,
+            changedBy);
+
+        historyEntry.AssignAppointment(this);
+        _statusHistory.Add(historyEntry);
     }
 
     internal void AssignPatient(Patient patient)
@@ -131,7 +155,7 @@ public class Appointment
         Status = newStatus;
         UpdatedAt = changedAt;
 
-        var historyEntry = AppointmentStatusHistory.Create(
+        var historyEntry = AppointmentStatusHistory.CreateStatusChange(
             Guid.NewGuid(),
             Id,
             previousStatus,
@@ -153,11 +177,9 @@ public class Appointment
         return current switch
         {
             AppointmentStatus.Scheduled => next is AppointmentStatus.Confirmed
-                or AppointmentStatus.Cancelled
-                or AppointmentStatus.Rescheduled,
+                or AppointmentStatus.Cancelled,
             AppointmentStatus.Confirmed => next is AppointmentStatus.Completed
-                or AppointmentStatus.Cancelled
-                or AppointmentStatus.Rescheduled,
+                or AppointmentStatus.Cancelled,
             AppointmentStatus.Completed => false,
             AppointmentStatus.Cancelled => false,
             AppointmentStatus.Rescheduled => false,

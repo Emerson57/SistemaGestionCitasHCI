@@ -1,11 +1,21 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
-@using Microsoft.AspNetCore.Components.Web.Virtualization
-@using Microsoft.JSInterop
 @using MedicalAppointments.Web
 @using MedicalAppointments.Web.Components
+@using MedicalAppointments.Web.Components.Common
 @using MedicalAppointments.Web.Components.Layout
+@using MedicalAppointments.Web.Components.Navigation
+@using MedicalAppointments.Web.Components.Pages.Errors
+@using MedicalAppointments.Web.Components.Appointments
+@using MedicalAppointments.Web.Auth
+@using MedicalAppointments.Web.Helpers
+@using MedicalAppointments.Web.Models.Enums
+@using MedicalAppointments.Web.Services.Api
+@using MedicalAppointments.Web.Services.Authentication
+@using MedicalAppointments.Web.Services.State

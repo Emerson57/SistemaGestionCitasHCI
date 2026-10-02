@@ -1,0 +1,62 @@
+@page "/medico/disponibilidad"
+@attribute [Authorize(Roles = AppRoles.Doctor)]
+@rendermode InteractiveServer
+@inject IAvailabilityApiService AvailabilityApi
+@inject NotificationService Notifications
+
+<PageTitle>Disponibilidad</PageTitle>
+<h1 class="page-title">Mi disponibilidad</h1>
+
+<EditForm Model="_form" OnValidSubmit="CreateAsync" class="card" style="margin-bottom:1rem;">
+    <h2 class="section-title">Agregar franja</h2>
+    <div class="form-field"><label>Fecha</label><InputDate @bind-Value="_form.Date" /></div>
+    <div class="form-field"><label>Hora inicio (HH:mm)</label><InputText @bind-Value="_form.StartTimeText" placeholder="08:00" /></div>
+    <div class="form-field"><label>Hora fin (HH:mm)</label><InputText @bind-Value="_form.EndTimeText" placeholder="18:00" /></div>
+    @if (!string.IsNullOrWhiteSpace(_error)) { <div class="validation-summary">@_error</div> }
+    <button class="btn btn-primary" type="submit" disabled="@_saving">@(_saving ? "Guardando…" : "Agregar disponibilidad")</button>
+</EditForm>
+
+<p class="text-muted">Las franjas disponibles se publican para que los pacientes puedan reservar citas.</p>
+
+@code {
+    private bool _saving;
+    private string? _error;
+    private readonly AvailabilityForm _form = new();
+
+    private async Task CreateAsync()
+    {
+        if (_form.Date is null || !TimeOnly.TryParse(_form.StartTimeText, out var start) || !TimeOnly.TryParse(_form.EndTimeText, out var end))
+        {
+            _error = "Ingresa una fecha y horas válidas en formato HH:mm.";
+            return;
+        }
+
+        if (end <= start)
+        {
+            _error = "La hora de fin debe ser posterior a la hora de inicio.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            await AvailabilityApi.CreateForCurrentDoctorAsync(new Models.Availability.CreateMyDoctorAvailabilityRequest
+            {
+                Date = DateOnly.FromDateTime(_form.Date.Value),
+                StartTime = start,
+                EndTime = end
+            });
+            Notifications.ShowSuccess("Disponibilidad registrada.");
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _saving = false; }
+    }
+
+    private sealed class AvailabilityForm
+    {
+        public DateTime? Date { get; set; } = DateTime.Today.AddDays(1);
+        public string StartTimeText { get; set; } = "08:00";
+        public string EndTimeText { get; set; } = "18:00";
+    }
+}

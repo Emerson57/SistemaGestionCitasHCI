@@ -1,0 +1,94 @@
+@page "/admin/medicos"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveServer
+@inject IDoctorApiService DoctorApi
+@inject ISpecialtyApiService SpecialtyApi
+
+<PageTitle>Médicos</PageTitle>
+<h1 class="page-title">Médicos</h1>
+
+<div class="form-field">
+    <label for="filter">Filtrar por especialidad</label>
+    <InputSelect id="filter" @bind-Value="_filterSpecialtyId" @bind-Value:after="LoadAsync">
+        <option value="0">Todas</option>
+        @foreach (var s in _specialties)
+        {
+            <option value="@s.Id">@s.Name</option>
+        }
+    </InputSelect>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="section-title">Registrar médico</h2>
+    <div class="form-field"><label>Nombre</label><InputText @bind-Value="_create.FullName" /></div>
+    <div class="form-field"><label>Email</label><InputText @bind-Value="_create.Email" /></div>
+    <div class="form-field"><label>Contraseña inicial</label><InputText type="password" @bind-Value="_create.InitialPassword" /></div>
+    <div class="form-field"><label>Registro profesional</label><InputText @bind-Value="_create.ProfessionalLicense" /></div>
+    <div class="form-field"><label>Especialidad</label><InputSelect @bind-Value="_create.SpecialtyId">@foreach (var s in _specialties) { <option value="@s.Id">@s.Name</option> }</InputSelect></div>
+    @if (!string.IsNullOrWhiteSpace(_error)) { <div class="validation-summary">@_error</div> }
+    <button class="btn btn-primary" @onclick="CreateAsync">Crear médico</button>
+</div>
+
+@if (_loading) { <LoadingIndicator />; }
+else
+{
+    @foreach (var doctor in _doctors)
+    {
+        <article class="card" style="margin-bottom:0.75rem;">
+            <strong>@doctor.FullName</strong>
+            <p class="text-muted">@doctor.SpecialtyName — Lic. @doctor.ProfessionalLicense</p>
+            <button class="btn btn-danger" @onclick="() => DeactivateAsync(doctor.Id)">Desactivar</button>
+        </article>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private int _filterSpecialtyId;
+    private List<Models.Specialties.SpecialtyDto> _specialties = [];
+    private List<Models.Doctors.DoctorDto> _doctors = [];
+    private Models.Doctors.CreateDoctorRequest _create = new()
+    {
+        FullName = string.Empty,
+        Email = string.Empty,
+        InitialPassword = string.Empty,
+        ProfessionalLicense = string.Empty,
+        SpecialtyId = 1
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _specialties = (await SpecialtyApi.GetActiveAsync()).ToList();
+        if (_specialties.Count > 0) _create.SpecialtyId = _specialties[0].Id;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _doctors = (await DoctorApi.GetAllAsync(_filterSpecialtyId > 0 ? _filterSpecialtyId : null)).ToList();
+        _loading = false;
+    }
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+        try
+        {
+            await DoctorApi.CreateAsync(_create);
+            _create.FullName = string.Empty;
+            _create.Email = string.Empty;
+            _create.InitialPassword = string.Empty;
+            _create.ProfessionalLicense = string.Empty;
+            await LoadAsync();
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+    }
+
+    private async Task DeactivateAsync(Guid id)
+    {
+        await DoctorApi.DeactivateAsync(id);
+        await LoadAsync();
+    }
+}

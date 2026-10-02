@@ -20,6 +20,12 @@ public sealed class InMemoryDoctorAvailabilityRepository : IDoctorAvailabilityRe
         Task.FromResult<IReadOnlyList<DoctorAvailability>>(
             _slots.Where(s => s.DoctorId == doctorId && s.Status == AvailabilityStatus.Available).ToList());
 
+    public Task<IReadOnlyList<DoctorAvailability>> GetAllByDoctorAsync(
+        Guid doctorId,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<DoctorAvailability>>(
+            _slots.Where(s => s.DoctorId == doctorId).ToList());
+
     public Task<DoctorAvailability?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_slots.FirstOrDefault(s => s.Id == id));
 

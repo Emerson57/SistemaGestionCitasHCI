@@ -114,8 +114,7 @@ public sealed class AppointmentService(
 
         var active = appointments
             .Where(a => a.Status is AppointmentStatus.Scheduled
-                or AppointmentStatus.Confirmed
-                or AppointmentStatus.Rescheduled)
+                or AppointmentStatus.Confirmed)
             .ToList();
 
         var dtos = new List<AppointmentDto>();
@@ -209,10 +208,19 @@ public sealed class AppointmentService(
                 Error.Conflict("The selected doctor and time slot is already occupied."));
         }
 
-        var newSlot = await FindAvailableSlotAsync(
+        var previousDateTime = appointment.AppointmentDateTime;
+        var releasedSlot = await ReleaseSlotForDateTimeAsync(
             appointment.DoctorId,
-            request.AppointmentDateTime,
+            previousDateTime,
             cancellationToken);
+
+        DoctorAvailability? newSlot = releasedSlot is not null
+            && SlotContainsDateTime(releasedSlot, request.AppointmentDateTime)
+            ? releasedSlot
+            : await FindAvailableSlotAsync(
+                appointment.DoctorId,
+                request.AppointmentDateTime,
+                cancellationToken);
 
         if (newSlot is null)
         {
@@ -231,11 +239,22 @@ public sealed class AppointmentService(
         }
         catch (DomainException ex)
         {
+            if (releasedSlot is not null)
+            {
+                try
+                {
+                    releasedSlot.Reserve(dateTimeProvider.UtcNow);
+                    availabilityRepository.Update(releasedSlot);
+                }
+                catch (DomainException)
+                {
+                    // Best-effort rollback of released slot.
+                }
+            }
+
             return Result<AppointmentDto>.Failure(Error.Validation(ex.Message));
         }
 
-        appointmentRepository.Update(appointment);
-        availabilityRepository.Update(newSlot);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var dto = await MapToDtoAsync(appointment, patient, cancellationToken);
@@ -263,16 +282,33 @@ public sealed class AppointmentService(
                 Error.Forbidden("Patients can cancel only their own appointments."));
         }
 
+        var releasedSlot = await ReleaseSlotForDateTimeAsync(
+            appointment.DoctorId,
+            appointment.AppointmentDateTime,
+            cancellationToken);
+
         try
         {
             appointment.Cancel(currentUserService.UserId!, dateTimeProvider.UtcNow);
         }
         catch (DomainException ex)
         {
+            if (releasedSlot is not null)
+            {
+                try
+                {
+                    releasedSlot.Reserve(dateTimeProvider.UtcNow);
+                    availabilityRepository.Update(releasedSlot);
+                }
+                catch (DomainException)
+                {
+                    // Best-effort rollback of released slot.
+                }
+            }
+
             return Result.Failure(Error.Validation(ex.Message));
         }
 
-        appointmentRepository.Update(appointment);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
@@ -310,7 +346,6 @@ public sealed class AppointmentService(
             return Result<AppointmentDto>.Failure(Error.Validation(ex.Message));
         }
 
-        appointmentRepository.Update(appointment);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var dto = await MapToDtoAsync(appointment, doctor, cancellationToken);
@@ -349,7 +384,6 @@ public sealed class AppointmentService(
             return Result<AppointmentDto>.Failure(Error.Validation(ex.Message));
         }
 
-        appointmentRepository.Update(appointment);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var dto = await MapToDtoAsync(appointment, doctor, cancellationToken);
@@ -361,14 +395,42 @@ public sealed class AppointmentService(
         DateTimeOffset appointmentDateTime,
         CancellationToken cancellationToken)
     {
+        var slots = await availabilityRepository.GetAvailableByDoctorAsync(doctorId, cancellationToken);
+        return slots.FirstOrDefault(s => SlotContainsDateTime(s, appointmentDateTime));
+    }
+
+    private static bool SlotContainsDateTime(DoctorAvailability slot, DateTimeOffset appointmentDateTime)
+    {
         var date = DateOnly.FromDateTime(appointmentDateTime.UtcDateTime);
         var time = TimeOnly.FromDateTime(appointmentDateTime.UtcDateTime);
 
-        var slots = await availabilityRepository.GetAvailableByDoctorAsync(doctorId, cancellationToken);
-        return slots.FirstOrDefault(s =>
+        return slot.Date == date
+            && slot.StartTime <= time
+            && time < slot.EndTime;
+    }
+
+    private async Task<DoctorAvailability?> ReleaseSlotForDateTimeAsync(
+        Guid doctorId,
+        DateTimeOffset appointmentDateTime,
+        CancellationToken cancellationToken)
+    {
+        var date = DateOnly.FromDateTime(appointmentDateTime.UtcDateTime);
+        var time = TimeOnly.FromDateTime(appointmentDateTime.UtcDateTime);
+
+        var slots = await availabilityRepository.GetAllByDoctorAsync(doctorId, cancellationToken);
+        var slot = slots.FirstOrDefault(s =>
             s.Date == date
             && s.StartTime <= time
-            && time < s.EndTime);
+            && time < s.EndTime
+            && s.Status == AvailabilityStatus.Reserved);
+
+        if (slot is null)
+        {
+            return null;
+        }
+
+        slot.Release(dateTimeProvider.UtcNow);
+        return slot;
     }
 
     private async Task<Result<Patient>> ResolveCurrentPatientAsync(CancellationToken cancellationToken)

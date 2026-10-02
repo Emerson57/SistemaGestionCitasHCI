@@ -1,0 +1,69 @@
+@page "/paciente/citas"
+@attribute [Authorize(Roles = AppRoles.Patient)]
+@rendermode InteractiveServer
+@inject IAppointmentApiService AppointmentApi
+
+<PageTitle>Mis citas</PageTitle>
+<h1 class="page-title">Mis citas</h1>
+
+@if (_loading) { <LoadingIndicator />; }
+else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
+else if (_items.Count == 0) { <EmptyState Title="Sin citas activas" Description="Programa tu primera cita cuando lo necesites."><a class="btn btn-primary" href="/paciente/citas/nueva">Programar cita</a></EmptyState>; }
+else
+{
+    <div class="grid-cards">
+        @foreach (var item in _items)
+        {
+            <article class="card">
+                <h2 class="section-title">@item.DoctorName</h2>
+                <p class="text-muted">@item.SpecialtyName</p>
+                <p>@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+                <p>Estado: @DisplayLabels.FormatAppointmentStatus(item.Status)</p>
+                <div class="hero-actions">
+                    <a class="btn btn-secondary" href="/paciente/citas/@item.Id/reprogramar">Reprogramar</a>
+                    <button class="btn btn-danger" @onclick="() => AskCancel(item)">Cancelar</button>
+                </div>
+            </article>
+        }
+    </div>
+}
+
+<ConfirmDialog @bind-IsOpen="_confirmOpen" Title="Cancelar cita"
+               Message="Esta acción cancelará la cita seleccionada. El horario quedará disponible para otros pacientes."
+               ConfirmText="Sí, cancelar" OnConfirmed="CancelAsync" />
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<Models.Appointments.AppointmentDto> _items = [];
+    private bool _confirmOpen;
+    private Guid? _cancelId;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try { _items = (await AppointmentApi.GetMyAppointmentsAsync()).ToList(); }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+        finally { _loading = false; }
+    }
+
+    private void AskCancel(Models.Appointments.AppointmentDto item)
+    {
+        _cancelId = item.Id;
+        _confirmOpen = true;
+    }
+
+    private async Task CancelAsync()
+    {
+        if (_cancelId is null) return;
+        try
+        {
+            await AppointmentApi.CancelAsync(_cancelId.Value);
+            await LoadAsync();
+        }
+        catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
+    }
+}
