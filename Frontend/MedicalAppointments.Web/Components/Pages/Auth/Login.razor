@@ -4,40 +4,56 @@
 @rendermode InteractiveServer
 @inject IAuthApiService AuthApi
 @inject JwtAuthenticationStateProvider AuthProvider
+@inject ISignInTicketStore SignInTickets
 @inject NavigationManager Navigation
 
 <PageTitle>Iniciar sesión</PageTitle>
-<h1 class="page-title">Iniciar sesión</h1>
 
-@if (_sessionExpired)
-{
-    <div class="validation-summary" role="alert">Tu sesión ha expirado. Inicia sesión nuevamente.</div>
-}
+<div class="auth-panel">
+    <h1 class="page-title">Iniciar sesión</h1>
+    <p class="text-muted">Accede con tu correo y contraseña para continuar.</p>
 
-<EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="loginForm">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="validation-summary" />
-
-    <div class="form-field">
-        <label for="email">Correo electrónico</label>
-        <InputText id="email" @bind-Value="_model.Email" autocomplete="username" />
-        <ValidationMessage For="() => _model.Email" class="field-error" />
-    </div>
-
-    <div class="form-field">
-        <label for="password">Contraseña</label>
-        <InputText id="password" type="@(_showPassword ? "text" : "password")" @bind-Value="_model.Password" autocomplete="current-password" />
-        <button type="button" class="btn btn-secondary" @onclick="() => _showPassword = !_showPassword">@(_showPassword ? "Ocultar" : "Mostrar")</button>
-        <ValidationMessage For="() => _model.Password" class="field-error" />
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(_error))
+    @if (_sessionExpired)
     {
-        <div class="validation-summary" role="alert">@_error</div>
+        <div class="validation-summary" role="alert">Tu sesión ha expirado. Inicia sesión nuevamente.</div>
     }
 
-    <button class="btn btn-primary" type="submit" disabled="@_loading">@(_loading ? "Ingresando…" : "Iniciar sesión")</button>
-</EditForm>
+    @if (_registrationComplete)
+    {
+        <div class="alert-success" role="status">@ApiErrorTranslator.RegistrationAccountCreatedLoginRequiredMessage()</div>
+    }
+
+    <div class="card">
+        <EditForm Model="_model" OnValidSubmit="SubmitAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="validation-summary" />
+
+            <div class="form-field">
+                <label for="email">Correo electrónico</label>
+                <InputText id="email" @bind-Value="_model.Email" autocomplete="username" />
+                <ValidationMessage For="() => _model.Email" class="field-error" />
+            </div>
+
+            <div class="form-field">
+                <label for="password">Contraseña</label>
+                <InputText id="password" type="@(_showPassword ? "text" : "password")" @bind-Value="_model.Password" autocomplete="current-password" />
+                <button type="button" class="btn btn-ghost" @onclick="() => _showPassword = !_showPassword">@(_showPassword ? "Ocultar contraseña" : "Mostrar contraseña")</button>
+                <ValidationMessage For="() => _model.Password" class="field-error" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <div class="validation-summary" role="alert">@_error</div>
+            }
+
+            <button class="btn btn-primary" type="submit" disabled="@_loading" style="width:100%;">@(_loading ? "Ingresando…" : "Iniciar sesión")</button>
+        </EditForm>
+    </div>
+
+    <p class="auth-footer">
+        ¿No tienes cuenta? <a href="/registro">Regístrate como paciente</a>
+    </p>
+</div>
 
 @code {
     private readonly LoginFormModel _model = new();
@@ -45,16 +61,29 @@
     private bool _showPassword;
     private string? _error;
     private bool _sessionExpired;
+    private bool _registrationComplete;
 
-    [SupplyParameterFromQuery]
+    [SupplyParameterFromQuery(Name = "registered")]
+    public string? Registered { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery(Name = "ReturnUrl")]
+    public string? ReturnUrlCookieAuth { get; set; }
 
     [SupplyParameterFromQuery(Name = "expired")]
     public string? Expired { get; set; }
 
+    protected override void OnParametersSet()
+    {
+        ReturnUrl = ResolveReturnUrl();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _sessionExpired = Expired == "1";
+        _registrationComplete = Registered == "1";
         var state = await AuthProvider.GetAuthenticationStateAsync();
         if (state.User.Identity?.IsAuthenticated == true)
         {
@@ -64,6 +93,11 @@
 
     private async Task SubmitAsync()
     {
+        if (_loading)
+        {
+            return;
+        }
+
         _loading = true;
         _error = null;
         try
@@ -74,7 +108,12 @@
                 Password = _model.Password
             });
             await AuthProvider.SignInAsync(response);
-            Navigation.NavigateTo(string.IsNullOrWhiteSpace(ReturnUrl) ? GetDashboardForRole(JwtAuthenticationStateProvider.CreatePrincipal(response)) : ReturnUrl, forceLoad: true);
+            var ticket = SignInTickets.CreateTicket(response);
+            var returnUrl = ReturnUrlValidator.NormalizeLocalPath(ResolveReturnUrl());
+            var completeUrl = ReturnUrlValidator.IsSafeLocalReturnUrl(returnUrl)
+                ? $"/auth/complete/{ticket}?returnUrl={Uri.EscapeDataString(returnUrl!)}"
+                : $"/auth/complete/{ticket}";
+            Navigation.NavigateTo(completeUrl, forceLoad: true);
         }
         catch (ApiException ex) when (ex.StatusCode is 401 or 400)
         {
@@ -84,10 +123,37 @@
         {
             _error = ApiErrorTranslator.ToUserMessage(ex);
         }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo contactar el servicio de autenticación. Comprueba que la API esté en ejecución.";
+        }
+        catch (InvalidOperationException)
+        {
+            _error = "No se pudo completar el inicio de sesión. Inténtalo de nuevo.";
+        }
+        catch (Exception ex) when (ex is not Microsoft.AspNetCore.Components.NavigationException)
+        {
+            _error = "No se pudo completar el inicio de sesión. Inténtalo de nuevo.";
+        }
         finally
         {
             _loading = false;
         }
+    }
+
+    private string? ResolveReturnUrl()
+    {
+        if (ReturnUrlValidator.IsSafeLocalReturnUrl(ReturnUrl))
+        {
+            return ReturnUrl;
+        }
+
+        if (ReturnUrlValidator.IsSafeLocalReturnUrl(ReturnUrlCookieAuth))
+        {
+            return ReturnUrlCookieAuth;
+        }
+
+        return ReturnUrlValidator.ParseFromUri(Navigation.Uri);
     }
 
     private static string GetDashboardForRole(System.Security.Claims.ClaimsPrincipal user) =>

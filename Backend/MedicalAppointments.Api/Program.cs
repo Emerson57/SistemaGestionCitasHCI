@@ -36,7 +36,10 @@ if (!app.Environment.IsEnvironment("IntegrationTesting"))
 {
     using var scope = app.Services.CreateScope();
     await IdentitySeeder.SeedRolesAsync(scope.ServiceProvider);
-    await IdentityDevAdminSeeder.SeedDevelopmentAdminAsync(scope.ServiceProvider, app.Configuration);
+    await DevelopmentDataSeeder.SeedAsync(
+        scope.ServiceProvider,
+        app.Configuration,
+        app.Environment);
 }
 
 app.UseExceptionHandler();

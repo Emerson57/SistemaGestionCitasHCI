@@ -25,9 +25,27 @@ public sealed class ProtectedSessionTokenStorage(ProtectedSessionStorage session
         }
     }
 
-    public async Task SetSessionAsync(StoredAuthSession session, CancellationToken cancellationToken = default) =>
-        await sessionStorage.SetAsync(StorageKey, session);
+    public async Task SetSessionAsync(StoredAuthSession session, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await sessionStorage.SetAsync(StorageKey, session);
+        }
+        catch
+        {
+            // Protected storage requires an interactive circuit (no JS during static prerender).
+        }
+    }
 
-    public async Task RemoveSessionAsync(CancellationToken cancellationToken = default) =>
-        await sessionStorage.DeleteAsync(StorageKey);
+    public async Task RemoveSessionAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await sessionStorage.DeleteAsync(StorageKey);
+        }
+        catch
+        {
+            // Protected storage requires an interactive circuit.
+        }
+    }
 }

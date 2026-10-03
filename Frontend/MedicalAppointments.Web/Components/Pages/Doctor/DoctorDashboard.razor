@@ -5,13 +5,22 @@
 
 <PageTitle>Panel del médico</PageTitle>
 <h1 class="page-title">Panel del médico</h1>
+<p class="page-lead">Revisa tu agenda y mantén tu disponibilidad actualizada.</p>
 
 @if (_loading) { <LoadingIndicator />; }
 else
 {
-    <p class="text-muted">Citas programadas hoy: @_todayCount</p>
-    <p class="text-muted">Próximas citas: @_upcomingCount</p>
-    <div class="hero-actions">
+    <div class="grid-cards" style="margin-bottom: var(--space-lg);">
+        <article class="card">
+            <h2 class="card-title">Hoy</h2>
+            <p class="meta-text">@_todayCount citas programadas para hoy</p>
+        </article>
+        <article class="card">
+            <h2 class="card-title">Próximas</h2>
+            <p class="meta-text">@_upcomingCount citas futuras en tu agenda</p>
+        </article>
+    </div>
+    <div class="dashboard-actions">
         <a class="btn btn-primary" href="/medico/agenda">Ver agenda</a>
         <a class="btn btn-secondary" href="/medico/disponibilidad">Gestionar disponibilidad</a>
     </div>

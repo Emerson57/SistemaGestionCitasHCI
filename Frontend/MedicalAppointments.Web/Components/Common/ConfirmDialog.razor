@@ -1,16 +1,21 @@
+@using Microsoft.JSInterop
+
 @if (IsOpen)
 {
-    <div class="dialog-backdrop" @onclick="Cancel">
-        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" @onclick:stopPropagation="true">
+    <div class="dialog-backdrop">
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message"
+             @onkeydown="HandleKeyDown" @ref="_dialogRef" tabindex="-1">
             <h2 id="confirm-title" class="section-title">@Title</h2>
-            <p>@Message</p>
+            <p id="confirm-message">@Message</p>
             <div class="dialog-actions">
-                <button type="button" class="btn btn-secondary" @onclick="Cancel">@CancelText</button>
+                <button type="button" class="btn btn-secondary" @onclick="Cancel" @ref="_cancelRef">@CancelText</button>
                 <button type="button" class="btn btn-danger" @onclick="Confirm">@ConfirmText</button>
             </div>
         </div>
     </div>
 }
+
+@inject IJSRuntime JS
 
 @code {
     [Parameter] public bool IsOpen { get; set; }
@@ -20,6 +25,33 @@
     [Parameter] public string CancelText { get; set; } = "Cancelar";
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public EventCallback OnConfirmed { get; set; }
+
+    private ElementReference _dialogRef;
+    private ElementReference _cancelRef;
+    private bool _wasOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            await JS.InvokeVoidAsync("confirmDialogFocus.capture");
+            await _cancelRef.FocusAsync();
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            await JS.InvokeVoidAsync("confirmDialogFocus.restore");
+        }
+
+        _wasOpen = IsOpen;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await Cancel();
+        }
+    }
 
     private async Task Cancel() => await IsOpenChanged.InvokeAsync(false);
 

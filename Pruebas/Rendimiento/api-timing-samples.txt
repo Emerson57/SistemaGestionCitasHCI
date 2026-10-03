@@ -1,0 +1,12 @@
+﻿Samples 2026-10-02 13:12:48 -05:00 (Development / LocalDB / https://localhost:7211)
+GET /api/specialties run 1 : 21 ms
+GET /api/specialties run 2 : 43 ms
+GET /api/specialties run 3 : 23 ms
+GET /api/specialties run 4 : 22 ms
+GET /api/specialties run 5 : 20 ms
+GET /api/appointments/my run 1 : 36 ms
+GET /api/appointments/my run 2 : 26 ms
+GET /api/appointments/my run 3 : 24 ms
+POST /api/auth/login run 1 : 69 ms
+POST /api/auth/login run 2 : 68 ms
+POST /api/auth/login run 3 : 72 ms

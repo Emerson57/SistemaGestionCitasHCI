@@ -5,7 +5,10 @@ using MedicalAppointments.Application.DTOs.Appointments;
 using MedicalAppointments.Application.DTOs.Authentication;
 using MedicalAppointments.Application.DTOs.Availability;
 using MedicalAppointments.Application.DTOs.Specialties;
+using MedicalAppointments.Infrastructure.Persistence;
 using MedicalAppointments.IntegrationTests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MedicalAppointments.IntegrationTests;
 
@@ -24,6 +27,25 @@ public sealed class ApiIntegrationTests(IntegrationTestFixture fixture)
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(body?.AccessToken);
+    }
+
+    [Fact]
+    public async Task RegisterPatient_CreatesPatientLinkedToIdentityUser()
+    {
+        using var client = fixture.Factory.CreateClient();
+        var email = $"linked.{Guid.NewGuid():N}@test.local";
+
+        var (response, body) = await ApiTestClient.RegisterPatientAsync(client, email, "PatientPassword123!");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(body?.UserId);
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var patient = await db.Patients.SingleOrDefaultAsync(p => p.UserId == body!.UserId);
+
+        Assert.NotNull(patient);
+        Assert.True(patient!.IsActive);
     }
 
     [Fact]

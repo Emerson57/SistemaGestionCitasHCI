@@ -2,26 +2,32 @@
 @attribute [Authorize(Roles = AppRoles.Patient)]
 @rendermode InteractiveServer
 @inject IAppointmentApiService AppointmentApi
+@inject IAuthSessionReadiness AuthReadiness
 
 <PageTitle>Historial de citas</PageTitle>
 <h1 class="page-title">Historial de citas</h1>
-<p class="text-muted">Consulta citas completadas o canceladas. No incluye información clínica.</p>
+<p class="page-lead">Citas completadas o canceladas. No incluye información clínica ni historias médicas.</p>
 
 @if (_loading) { <LoadingIndicator />; }
 else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
-else if (_items.Count == 0) { <EmptyState Title="Sin historial" Description="Aún no tienes citas completadas o canceladas." />; }
+else if (_items.Count == 0)
+{
+    <EmptyState Title="Sin historial" Description="No tienes citas anteriores registradas." />;
+}
 else
 {
-    <div class="grid-cards">
+    <ul class="task-list">
         @foreach (var item in _items)
         {
-            <article class="card">
-                <p><strong>@item.DoctorName</strong> — @item.SpecialtyName</p>
-                <p>@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
-                <p>Estado: @DisplayLabels.FormatAppointmentStatus(item.Status)</p>
-            </article>
+            <li>
+                <article class="card">
+                    <p><strong>@item.DoctorName</strong> — @item.SpecialtyName</p>
+                    <p class="meta-text">@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+                    <AppointmentStatusBadge Status="item.Status" />
+                </article>
+            </li>
         }
-    </div>
+    </ul>
 }
 
 @code {
@@ -29,12 +35,23 @@ else
     private string? _error;
     private List<Models.Appointments.AppointmentDto> _items = [];
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
 
     private async Task LoadAsync()
     {
         _loading = true;
-        try { _items = (await AppointmentApi.GetMyHistoryAsync()).ToList(); }
+        try
+        {
+            await AuthReadiness.WaitForApiTokenAsync();
+            _items = (await AppointmentApi.GetMyHistoryAsync()).ToList();
+        }
         catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
         finally { _loading = false; }
     }

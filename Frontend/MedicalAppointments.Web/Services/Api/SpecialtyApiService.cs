@@ -16,8 +16,11 @@ public interface ISpecialtyApiService
     Task DeactivateAsync(int id, CancellationToken cancellationToken = default);
 }
 
-public sealed class SpecialtyApiService(HttpClient httpClient, ISessionExpiredHandler sessionExpiredHandler)
-    : ApiClientBase(httpClient, sessionExpiredHandler), ISpecialtyApiService
+public sealed class SpecialtyApiService(
+    HttpClient httpClient,
+    ISessionExpiredHandler sessionExpiredHandler,
+    IOutgoingApiAuthContext outgoingApiAuthContext)
+    : ApiClientBase(httpClient, sessionExpiredHandler, outgoingApiAuthContext), ISpecialtyApiService
 {
     public Task<IReadOnlyList<SpecialtyDto>> GetActiveAsync(CancellationToken cancellationToken = default) =>
         GetAsync<IReadOnlyList<SpecialtyDto>>("api/specialties", cancellationToken)!;

@@ -6,12 +6,15 @@
 
 <PageTitle>Disponibilidad</PageTitle>
 <h1 class="page-title">Mi disponibilidad</h1>
+<p class="page-lead">Define franjas horarias en las que los pacientes pueden reservar citas contigo.</p>
 
-<EditForm Model="_form" OnValidSubmit="CreateAsync" class="card" style="margin-bottom:1rem;">
+<EditForm Model="_form" OnValidSubmit="CreateAsync" class="card" style="margin-bottom: var(--space-lg);">
     <h2 class="section-title">Agregar franja</h2>
-    <div class="form-field"><label>Fecha</label><InputDate @bind-Value="_form.Date" /></div>
-    <div class="form-field"><label>Hora inicio (HH:mm)</label><InputText @bind-Value="_form.StartTimeText" placeholder="08:00" /></div>
-    <div class="form-field"><label>Hora fin (HH:mm)</label><InputText @bind-Value="_form.EndTimeText" placeholder="18:00" /></div>
+    <div class="form-grid two-col">
+        <div class="form-field"><label for="avail-date">Fecha</label><InputDate id="avail-date" @bind-Value="_form.Date" /></div>
+        <div class="form-field"><label for="avail-start">Hora inicio (HH:mm)</label><InputText id="avail-start" @bind-Value="_form.StartTimeText" placeholder="08:00" inputmode="numeric" /></div>
+        <div class="form-field"><label for="avail-end">Hora fin (HH:mm)</label><InputText id="avail-end" @bind-Value="_form.EndTimeText" placeholder="18:00" inputmode="numeric" /></div>
+    </div>
     @if (!string.IsNullOrWhiteSpace(_error)) { <div class="validation-summary">@_error</div> }
     <button class="btn btn-primary" type="submit" disabled="@_saving">@(_saving ? "Guardando…" : "Agregar disponibilidad")</button>
 </EditForm>

@@ -16,8 +16,11 @@ public interface IPatientApiService
     Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
-public sealed class PatientApiService(HttpClient httpClient, ISessionExpiredHandler sessionExpiredHandler)
-    : ApiClientBase(httpClient, sessionExpiredHandler), IPatientApiService
+public sealed class PatientApiService(
+    HttpClient httpClient,
+    ISessionExpiredHandler sessionExpiredHandler,
+    IOutgoingApiAuthContext outgoingApiAuthContext)
+    : ApiClientBase(httpClient, sessionExpiredHandler, outgoingApiAuthContext), IPatientApiService
 {
     public Task<PatientDto> GetMeAsync(CancellationToken cancellationToken = default) =>
         GetAsync<PatientDto>("api/patients/me", cancellationToken)!;

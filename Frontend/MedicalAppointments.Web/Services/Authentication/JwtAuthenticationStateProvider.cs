@@ -2,26 +2,34 @@ using System.Security.Claims;
 using MedicalAppointments.Web.Auth;
 using MedicalAppointments.Web.Models.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace MedicalAppointments.Web.Services.Authentication;
 
-public sealed class JwtAuthenticationStateProvider(ITokenStorageService tokenStorage) : AuthenticationStateProvider
+public sealed class JwtAuthenticationStateProvider(
+    ITokenStorageService tokenStorage,
+    IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         var session = await tokenStorage.GetSessionAsync();
-        if (session is null || string.IsNullOrWhiteSpace(session.AccessToken))
+        if (session is not null && !string.IsNullOrWhiteSpace(session.AccessToken))
         {
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-        }
+            if (session.User.ExpiresAt is not { } expiresAt || expiresAt > DateTimeOffset.UtcNow)
+            {
+                return new AuthenticationState(CreatePrincipal(session.User));
+            }
 
-        if (session.User.ExpiresAt is { } expiresAt && expiresAt <= DateTimeOffset.UtcNow)
-        {
             await tokenStorage.RemoveSessionAsync();
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 
-        return new AuthenticationState(CreatePrincipal(session.User));
+        var cookieUser = httpContextAccessor.HttpContext?.User;
+        if (cookieUser?.Identity?.IsAuthenticated == true)
+        {
+            return new AuthenticationState(cookieUser);
+        }
+
+        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
     }
 
     public async Task SignInAsync(AuthenticationResponse response, CancellationToken cancellationToken = default)

@@ -12,8 +12,11 @@ public interface IAvailabilityApiService
         CancellationToken cancellationToken = default);
 }
 
-public sealed class AvailabilityApiService(HttpClient httpClient, ISessionExpiredHandler sessionExpiredHandler)
-    : ApiClientBase(httpClient, sessionExpiredHandler), IAvailabilityApiService
+public sealed class AvailabilityApiService(
+    HttpClient httpClient,
+    ISessionExpiredHandler sessionExpiredHandler,
+    IOutgoingApiAuthContext outgoingApiAuthContext)
+    : ApiClientBase(httpClient, sessionExpiredHandler, outgoingApiAuthContext), IAvailabilityApiService
 {
     public Task<IReadOnlyList<DoctorAvailabilityDto>> GetByDoctorAsync(Guid doctorId, CancellationToken cancellationToken = default) =>
         GetAsync<IReadOnlyList<DoctorAvailabilityDto>>($"api/doctors/{doctorId}/availability", cancellationToken)!;

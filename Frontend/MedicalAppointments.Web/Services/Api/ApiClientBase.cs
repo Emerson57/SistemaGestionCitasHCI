@@ -6,7 +6,8 @@ namespace MedicalAppointments.Web.Services.Api;
 
 public abstract class ApiClientBase(
     HttpClient httpClient,
-    ISessionExpiredHandler sessionExpiredHandler)
+    ISessionExpiredHandler sessionExpiredHandler,
+    IOutgoingApiAuthContext outgoingApiAuthContext)
 {
     protected static JsonSerializerOptions JsonOptions => ApiJson.Options;
 
@@ -83,7 +84,17 @@ public abstract class ApiClientBase(
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            await sessionExpiredHandler.HandleSessionExpiredAsync();
+            if (outgoingApiAuthContext.BearerTokenAttached)
+            {
+                await sessionExpiredHandler.HandleSessionExpiredAsync();
+            }
+            else
+            {
+                throw new ApiException(
+                    ApiErrorTranslator.MissingBearerTokenMessage(),
+                    (int)response.StatusCode,
+                    problem);
+            }
         }
 
         throw exception;

@@ -2,30 +2,43 @@
 @attribute [Authorize(Roles = AppRoles.Patient)]
 @rendermode InteractiveServer
 @inject IAppointmentApiService AppointmentApi
+@inject IAuthSessionReadiness AuthReadiness
 
 <PageTitle>Panel del paciente</PageTitle>
 <h1 class="page-title">Hola, bienvenido/a</h1>
+<p class="page-lead">Gestiona tus citas médicas desde un solo lugar.</p>
 
-@if (_loading) { <LoadingIndicator />; }
-else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
+@if (_loading)
+{
+    <div class="card"><div class="skeleton-block tall"></div><div class="skeleton-block"></div></div>
+}
+else if (_error is not null)
+{
+    <ErrorState Message="@_error" OnRetry="LoadAsync" />
+}
 else
 {
     @if (_next is not null)
     {
-        <article class="card" style="margin-bottom: 1rem;">
+        <article class="card" style="margin-bottom: var(--space-lg);">
             <h2 class="section-title">Próxima cita</h2>
-            <p>@_next.DoctorName — @_next.SpecialtyName</p>
-            <p>@_next.AppointmentDateTime.ToLocalTime().ToString("f")</p>
-            <p>Estado: @DisplayLabels.FormatAppointmentStatus(_next.Status)</p>
+            <p><strong>@_next.DoctorName</strong> — @_next.SpecialtyName</p>
+            <p class="meta-text">@_next.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+            <AppointmentStatusBadge Status="_next.Status" />
         </article>
     }
+    else
+    {
+        <EmptyState Title="Sin citas próximas" Description="Aún no tienes citas programadas.">
+            <a class="btn btn-primary" href="/paciente/citas/nueva">Programar una cita</a>
+        </EmptyState>
+    }
 
-    <div class="hero-actions">
-        <a class="btn btn-primary" href="/paciente/citas/nueva">Programar cita</a>
+    <nav class="dashboard-actions" aria-label="Acciones del paciente">
         <a class="btn btn-secondary" href="/paciente/citas">Mis citas</a>
         <a class="btn btn-secondary" href="/paciente/historial">Historial</a>
         <a class="btn btn-secondary" href="/paciente/perfil">Mi perfil</a>
-    </div>
+    </nav>
 }
 
 @code {
@@ -33,7 +46,14 @@ else
     private string? _error;
     private Models.Appointments.AppointmentDto? _next;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
 
     private async Task LoadAsync()
     {
@@ -41,8 +61,11 @@ else
         _error = null;
         try
         {
+            await AuthReadiness.WaitForApiTokenAsync();
             var items = await AppointmentApi.GetMyAppointmentsAsync();
-            _next = items.OrderBy(a => a.AppointmentDateTime).FirstOrDefault();
+            _next = items.Where(a => a.AppointmentDateTime >= DateTimeOffset.UtcNow)
+                .OrderBy(a => a.AppointmentDateTime)
+                .FirstOrDefault();
         }
         catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
         finally { _loading = false; }

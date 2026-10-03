@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Backend\MedicalAppointments.Domain\MedicalAppointments.Domain.csproj" />
     <ProjectReference Include="..\..\Backend\MedicalAppointments.Application\MedicalAppointments.Application.csproj" />
+    <ProjectReference Include="..\..\Frontend\MedicalAppointments.Web\MedicalAppointments.Web.csproj" />
   </ItemGroup>
 
 </Project>

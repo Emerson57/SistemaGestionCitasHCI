@@ -43,13 +43,7 @@ From `Backend/MedicalAppointments.Api`:
 dotnet user-secrets set "Jwt:SigningKey" "YourLocalDevSigningKey_AtLeast32Characters"
 ```
 
-Optional development administrator (only if you want a seeded admin account):
-
-```bash
-dotnet user-secrets set "DevAdmin:Email" "admin@local.test"
-dotnet user-secrets set "DevAdmin:Password" "ChangeMe_StrongPassword123!"
-dotnet user-secrets set "DevAdmin:FullName" "Local Administrator"
-```
+Optional **development seed** (patient, doctor, admin, specialties) — see [docs/dev-seed.md](docs/dev-seed.md). Set `DevSeed:Enabled` to `true` and configure `DevSeed:*` in User Secrets (passwords never committed). Legacy `DevAdmin:*` keys still work for admin only.
 
 ### JWT structure (non-secret values in appsettings)
 
@@ -107,6 +101,10 @@ dotnet test SistemaGestionCitasHCI.slnx
 Current baseline: 30 unit tests + 22 integration tests (52 total).
 
 Integration tests use an isolated LocalDB database created per test run.
+
+## Manual browser validation
+
+Before demonstration deployment, complete [docs/manual-validation-guide.md](docs/manual-validation-guide.md) and [docs/deployment-gate.md](docs/deployment-gate.md). Sign-off form: [Pruebas/Funcionales/Manual-Browser-Signoff.md](Pruebas/Funcionales/Manual-Browser-Signoff.md).
 
 ## Security
 

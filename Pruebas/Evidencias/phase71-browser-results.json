@@ -1,0 +1,12 @@
+{
+  "startedAt": "2026-10-02T20:14:00.529Z",
+  "tests": {},
+  "notes": [
+    "Patient flow error: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n  - waiting for locator('.app-shell') to be visible\n",
+    "Doctor flow error: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n  - waiting for locator('.app-shell') to be visible\n",
+    "Admin flow error: page.goto: net::ERR_CONNECTION_REFUSED at https://localhost:7171/login\nCall log:\n  - navigating to \"https://localhost:7171/login\", waiting until \"domcontentloaded\"\n",
+    "Auth URL error: page.goto: net::ERR_CONNECTION_REFUSED at https://localhost:7171/login\nCall log:\n  - navigating to \"https://localhost:7171/login\", waiting until \"domcontentloaded\"\n"
+  ],
+  "fatal": "page.evaluate: SecurityError: Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.\n    at UtilityScript.evaluate (<anonymous>:236:17)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+  "finishedAt": "2026-10-02T20:18:18.965Z"
+}

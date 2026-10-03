@@ -124,13 +124,18 @@ public class Doctor
         }
 
         SpecialtyId = specialtyId;
-        Specialty = null;
         UpdatedAt = updatedAt;
     }
 
     public void Deactivate(DateTimeOffset updatedAt)
     {
         IsActive = false;
+        UpdatedAt = updatedAt;
+    }
+
+    public void Activate(DateTimeOffset updatedAt)
+    {
+        IsActive = true;
         UpdatedAt = updatedAt;
     }
 

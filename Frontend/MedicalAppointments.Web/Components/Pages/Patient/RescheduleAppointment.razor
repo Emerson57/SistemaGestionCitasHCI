@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = AppRoles.Patient)]
 @rendermode InteractiveServer
 @inject IAppointmentApiService AppointmentApi
+@inject IAuthSessionReadiness AuthReadiness
 
 <PageTitle>Reprogramar cita</PageTitle>
 <h1 class="page-title">Reprogramar cita</h1>
@@ -15,10 +16,17 @@ else { <AppointmentSchedulingFlow RescheduleAppointment="_appointment" />; }
     private bool _loading = true;
     private Models.Appointments.AppointmentDto? _appointment;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await AuthReadiness.WaitForApiTokenAsync();
         var items = await AppointmentApi.GetMyAppointmentsAsync();
         _appointment = items.FirstOrDefault(a => a.Id == Id);
         _loading = false;
+        StateHasChanged();
     }
 }

@@ -1,6 +1,7 @@
 using MedicalAppointments.Web.Services.Api;
 using MedicalAppointments.Web.Services.Authentication;
 using MedicalAppointments.Web.Services.State;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace MedicalAppointments.Web.Extensions;
@@ -11,12 +12,34 @@ public static class ServiceCollectionExtensions
     {
         var apiBaseUri = configuration.GetApiBaseUri();
 
+        services.AddMemoryCache();
+        services.AddSingleton<ISignInTicketStore, SignInTicketStore>();
+        services.AddHttpContextAccessor();
+        services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/login";
+                options.AccessDeniedPath = "/forbidden";
+                options.Cookie.Name = "MedicalAppointments.Auth";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+            });
+        services.AddAuthorization();
         services.AddScoped<JwtAuthenticationStateProvider>();
         services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
         services.AddAuthorizationCore();
         services.AddCascadingAuthenticationState();
 
-        services.AddScoped<ITokenStorageService, ProtectedSessionTokenStorage>();
+        services.AddDataProtection();
+        services.AddScoped<ProtectedSessionTokenStorage>();
+        services.AddScoped<IApiSessionCookieStore, ApiSessionCookieStore>();
+        services.AddScoped<ITokenStorageService>(sp => new CompositeTokenStorageService(
+            sp.GetRequiredService<ProtectedSessionTokenStorage>(),
+            sp.GetRequiredService<IApiSessionCookieStore>()));
+        services.AddScoped<IOutgoingApiAuthContext, OutgoingApiAuthContext>();
+        services.AddScoped<IAuthSessionReadiness, AuthSessionReadiness>();
+        services.AddScoped<IAuthSessionSyncService, AuthSessionSyncService>();
         services.AddScoped<ISessionExpiredHandler, SessionExpiredHandler>();
         services.AddScoped<NotificationService>();
         services.AddTransient<BearerTokenHandler>();

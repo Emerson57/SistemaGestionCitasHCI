@@ -1,0 +1,16 @@
+﻿=== Phase 7 seeded API validation 2026-10-02 13:27 -05:00 ===
+P-UI-01 Login patient: OK role=Patient
+P-UI-02 Dashboard data (appointments/my): count=0
+P-UI-04 Specialties loaded: count=5
+P-UI-05 Doctor selected: M├®dico Demo id=2b59c2a2-16c8-4d02-8700-33a4a60f8363
+P-UI-06 Availability slots: count=10
+P-UI-07/08 Schedule: OK id=46f4891b-6167-4a86-b7ac-c77faf3ec7f9
+P-UI-10 My appointments after create: OK
+P-UI-11 Reschedule: OK
+P-UI-13 Cancel: OK
+P-UI-14 History: length 391
+D-UI-01 Doctor login: OK
+D-UI-03 Agenda count: 1
+AD-UI-01 Admin login: OK
+AD-UI-03 Specialties as admin: 5
+A-05 Patient POST specialty HTTP: 403

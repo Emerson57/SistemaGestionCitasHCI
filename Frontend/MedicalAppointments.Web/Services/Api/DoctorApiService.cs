@@ -19,8 +19,11 @@ public interface IDoctorApiService
     Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
-public sealed class DoctorApiService(HttpClient httpClient, ISessionExpiredHandler sessionExpiredHandler)
-    : ApiClientBase(httpClient, sessionExpiredHandler), IDoctorApiService
+public sealed class DoctorApiService(
+    HttpClient httpClient,
+    ISessionExpiredHandler sessionExpiredHandler,
+    IOutgoingApiAuthContext outgoingApiAuthContext)
+    : ApiClientBase(httpClient, sessionExpiredHandler, outgoingApiAuthContext), IDoctorApiService
 {
     public Task<IReadOnlyList<DoctorDto>> GetAllAsync(int? specialtyId = null, CancellationToken cancellationToken = default)
     {

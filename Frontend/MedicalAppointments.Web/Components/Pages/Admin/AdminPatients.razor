@@ -5,33 +5,44 @@
 
 <PageTitle>Pacientes</PageTitle>
 <h1 class="page-title">Pacientes</h1>
+<p class="page-lead">Consulta usuarios pacientes. Los detalles sensibles se muestran solo cuando son necesarios.</p>
 
 @if (_loading) { <LoadingIndicator />; }
 else if (_items.Count == 0) { <EmptyState Title="Sin pacientes" Description="No hay pacientes registrados." />; }
 else
 {
-    @foreach (var patient in _items)
-    {
-        <article class="card" style="margin-bottom:0.75rem;">
-            <strong>@patient.FullName</strong>
-            <p class="text-muted">Tel: @patient.PhoneNumber</p>
-            @if (_expandedId == patient.Id)
-            {
-                <p>Dirección: @patient.Address</p>
-                <p>Nacimiento: @patient.BirthDate.ToString("d")</p>
-            }
-            <div class="hero-actions">
-                <button class="btn btn-secondary" @onclick="() => Toggle(patient.Id)">@(_expandedId == patient.Id ? "Ocultar detalle" : "Ver detalle")</button>
-                <button class="btn btn-danger" @onclick="() => DeactivateAsync(patient.Id)">Desactivar</button>
-            </div>
-        </article>
-    }
+    <div class="admin-list">
+        @foreach (var patient in _items)
+        {
+            <article class="card admin-list-item">
+                <div>
+                    <strong>@patient.FullName</strong>
+                    <p class="text-muted">Tel: @patient.PhoneNumber</p>
+                    @if (_expandedId == patient.Id)
+                    {
+                        <p class="meta-text">Dirección: @patient.Address</p>
+                        <p class="meta-text">Nacimiento: @patient.BirthDate.ToString("d")</p>
+                    }
+                </div>
+                <div class="hero-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => Toggle(patient.Id)">@(_expandedId == patient.Id ? "Ocultar detalle" : "Ver detalle")</button>
+                    <button type="button" class="btn btn-danger btn-sm" @onclick="() => AskDeactivate(patient.Id)">Desactivar</button>
+                </div>
+            </article>
+        }
+    </div>
 }
+
+<ConfirmDialog @bind-IsOpen="_confirmOpen" Title="Desactivar paciente"
+               Message="El usuario no podrá acceder al sistema. Esta acción no elimina el historial de citas."
+               ConfirmText="Desactivar" OnConfirmed="DeactivateConfirmedAsync" />
 
 @code {
     private bool _loading = true;
     private List<Models.Patients.PatientDto> _items = [];
     private Guid? _expandedId;
+    private bool _confirmOpen;
+    private Guid? _deactivateId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -41,9 +52,17 @@ else
 
     private void Toggle(Guid id) => _expandedId = _expandedId == id ? null : id;
 
-    private async Task DeactivateAsync(Guid id)
+    private void AskDeactivate(Guid id)
     {
-        await PatientApi.DeactivateAsync(id);
+        _deactivateId = id;
+        _confirmOpen = true;
+    }
+
+    private async Task DeactivateConfirmedAsync()
+    {
+        if (_deactivateId is null) return;
+        await PatientApi.DeactivateAsync(_deactivateId.Value);
+        _deactivateId = null;
         _items = (await PatientApi.GetAllAsync()).ToList();
     }
 }

@@ -1,0 +1,10 @@
+﻿=== Functional API dev run 2026-10-02 13:12:48 -05:00 ===
+F-01 Register: {"userId":"ac7f1acb-c16f-440c-bfd6-0fec183ed01a","fullName":"Phase6 Patient","email":"phase6.patient.1390322435@test.local","role":"Patient","accessToken":"[REDACTED]","expiresAt":"2026-10-02T19:12:49.0147555+00:00"}
+F-02 Login: HTTP body starts with accessToken=True
+F-04 GET specialties: 49 ms HTTP_CODE:401
+F-04 body length: 2
+F-05 doctors for specialty  : len 2
+F-09 GET appointments/my: 138 ms HTTP_CODE:200
+A-01 anonymous /patients/me: HTTP 401
+A-03 invalid token: HTTP 401
+Duplicate register: {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.10","title":"Conflict","status":409,"detail":"A user with this...

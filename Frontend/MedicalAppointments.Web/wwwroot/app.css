@@ -17,12 +17,13 @@
 .hero {
     display: grid;
     gap: var(--space-xl);
-    align-items: center;
+    align-items: start;
 }
 
 @media (min-width: 900px) {
     .hero {
-        grid-template-columns: 1.2fr 1fr;
+        grid-template-columns: 1.15fr 1fr;
+        align-items: center;
     }
 }
 
@@ -44,9 +45,45 @@
     }
 }
 
+.benefit-card {
+    display: flex;
+    gap: var(--space-md);
+    align-items: flex-start;
+}
+
+.benefit-icon {
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-md);
+    background: var(--primary-soft);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+}
+
+.auth-panel {
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.auth-panel .card {
+    padding: var(--space-xl);
+}
+
+.auth-footer {
+    margin-top: var(--space-lg);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
 .grid-cards {
     display: grid;
     gap: var(--space-md);
+    margin-bottom: var(--space-lg);
 }
 
 @media (min-width: 768px) {
@@ -55,7 +92,7 @@
     }
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 900px) {
     .grid-cards.three {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -63,28 +100,47 @@
 
 .time-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
     gap: var(--space-sm);
+    margin-bottom: var(--space-md);
 }
 
 .time-slot {
     min-height: var(--touch-min);
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
+    border: 1px solid var(--border);
+    background: var(--surface);
     border-radius: var(--radius-sm);
     cursor: pointer;
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+}
+
+.time-slot:hover:not(:disabled) {
+    border-color: var(--primary);
 }
 
 .time-slot.selected {
-    border-color: var(--color-primary);
+    border-color: var(--primary);
     border-width: 2px;
-    font-weight: 600;
+    font-weight: 700;
+    background: var(--primary-soft);
+}
+
+.time-slot.selected::after {
+    content: " ✓";
 }
 
 .time-slot:disabled {
     opacity: 0.45;
     cursor: not-allowed;
     text-decoration: line-through;
+}
+
+.date-group-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: var(--space-md) 0 var(--space-sm);
 }
 
 .dialog-backdrop {
@@ -99,16 +155,19 @@
 }
 
 .dialog {
-    background: var(--color-surface);
+    background: var(--surface);
     border-radius: var(--radius-lg);
     padding: var(--space-lg);
     max-width: 480px;
     width: 100%;
     box-shadow: var(--shadow-md);
+    max-height: min(90vh, 640px);
+    overflow-y: auto;
 }
 
 .dialog-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-sm);
     margin-top: var(--space-lg);
@@ -117,12 +176,74 @@
 .loader {
     width: 2rem;
     height: 2rem;
-    border: 3px solid var(--color-border);
-    border-top-color: var(--color-primary);
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
 
+.loading-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md) 0;
+    color: var(--text-muted);
+}
+
+.skeleton-block {
+    height: 1rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--surface-secondary) 25%, #e2ecee 50%, var(--surface-secondary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+    margin-bottom: var(--space-sm);
+}
+
+.skeleton-block.tall {
+    height: 4rem;
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.dashboard-actions .btn-primary {
+    flex: 1 1 100%;
+}
+
+@media (min-width: 480px) {
+    .dashboard-actions .btn-primary {
+        flex: 0 1 auto;
+    }
+}
+
+.appointment-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: var(--space-sm) 0;
+}
+
+.task-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--space-md);
+}
+
+.task-list .card {
+    margin: 0;
 }

@@ -1,0 +1,19 @@
+@using MedicalAppointments.Web.Models.Enums
+
+<span class="@CssClass" title="@DisplayLabels.FormatAppointmentStatus(Status)">
+    @DisplayLabels.FormatAppointmentStatus(Status)
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public AppointmentStatus Status { get; set; }
+
+    private string CssClass => Status switch
+    {
+        AppointmentStatus.Scheduled => "status-badge status-scheduled",
+        AppointmentStatus.Confirmed => "status-badge status-confirmed",
+        AppointmentStatus.Completed => "status-badge status-completed",
+        AppointmentStatus.Cancelled => "status-badge status-cancelled",
+        _ => "status-badge"
+    };
+}

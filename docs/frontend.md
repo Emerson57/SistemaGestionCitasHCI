@@ -60,13 +60,65 @@ Run **API first**, then Web. Default Web URLs: `https://localhost:7171` / `http:
 
 ## Authentication
 
-- **State:** `JwtAuthenticationStateProvider` reads JWT claims after login/register
-- **Storage:** `ProtectedSessionTokenStorage` via ASP.NET **Protected Session Storage** (encrypted, tab/session scoped). Tradeoff: survives in-session navigation/reconnect; not for cross-device persistence; passwords never stored
-- **Roles:** From token claims only (`Patient`, `Doctor`, `Administrator`); `[Authorize(Roles = "...")]` on pages; backend remains authoritative
+Blazor **Interactive Server** uses two coordinated mechanisms:
+
+1. **JWT in protected session storage** — API calls via `BearerTokenHandler`.
+2. **HttpOnly cookie** — satisfies ASP.NET Core authorization on SSR and full-page navigations to `[Authorize]` routes.
+
+### Login / register flow
+
+```
+User submits Login (Interactive) → API POST /api/auth/login
+  → JwtAuthenticationStateProvider.SignInAsync (session storage + claims)
+  → SignInTicketStore.CreateTicket (AuthenticationResponse in IMemoryCache, 2 min TTL)
+  → Browser navigates (forceLoad) to GET /auth/complete/{ticketId}
+  → ConsumeTicket (one-time: removed from cache on use)
+  → SignInAsync cookie (non-persistent session cookie)
+  → Redirect to role home or safe local returnUrl
+```
+
+- **Ticket:** Random 32-char hex id; **not logged**; **no password** in ticket payload (post-login user profile + access token reference only in server memory). Replaying `/auth/complete/{id}` after consume → redirect `/login?expired=1`.
+- **returnUrl:** Only local paths allowed (`/…`, rejects `//`, `\`, `@`).
+- **Logout:** Client clears session storage → `GET /auth/sign-out` clears cookie → `/`.
+
+### Cookie options (Development / HTTPS)
+
+| Option | Value | Rationale |
+|--------|-------|-----------|
+| Name | `MedicalAppointments.Auth` | App-scoped |
+| HttpOnly | true | Not readable from JS |
+| SecurePolicy | Always | HTTPS launch profiles |
+| SameSite | Lax | Same-site navigations + OAuth-safe default |
+| IsPersistent | false on sign-in | Session cookie semantics at login completion |
+
+Sliding expiration uses framework cookie defaults unless overridden in `AddCookie` (not shortened for automation).
+
+### Components
+
+- `SignInTicketStore` — singleton + `IMemoryCache`
+- `AuthEndpointExtensions.MapAuthEndpoints` — `/auth/complete/{ticketId}`, `/auth/sign-out`
+- `HeaderActions` — interactive logout; `MainLayout` without `@rendermode` (avoids SSR/Body render-mode conflict)
+
+Manual sign-off: [Pruebas/Funcionales/Manual-Browser-Signoff.md](../Pruebas/Funcionales/Manual-Browser-Signoff.md).
+
+- **Roles:** From token claims (`Patient`, `Doctor`, `Administrator`); backend remains authoritative
 
 ## Design system
 
-CSS custom properties in `wwwroot/css/design-system.css`: primary/secondary/success/warning/danger, text, surfaces, spacing, radius, focus ring. Shared patterns: `.btn`, `.card`, `.form-field`, wizard steps, responsive layout in `app.css`.
+CSS custom properties in `wwwroot/css/design-system.css`: `--primary`, `--primary-hover`, `--primary-soft`, semantic colors, text/background/surface tokens, shadows, radius, spacing. Shared patterns: `.btn` (primary/secondary/danger/ghost), `.card`, `.form-field`, `.status-badge`, wizard stepper, `.page-container`, responsive layout in `app.css`.
+
+See **[design-traceability.md](design-traceability.md)** for screen-by-screen mapping to the wireframe/mockup flow.
+
+## High-Fidelity Visual Refinement (Phase 5.1)
+
+- **Visual direction:** Calm healthcare UI — teal primary, white surfaces, minimal decoration, no admin-template chrome.
+- **Typography:** `.page-title`, `.section-title`, `.card-title`, `.page-lead`, `.meta-text`, `.helper-text` with readable sizes and line-height.
+- **Layout:** Max-width content (720px forms, 960px lists); public landing up to 1100px; fixed header + sidebar on desktop, drawer on mobile.
+- **Appointment wizard:** Numbered stepper (1–4) + persistent step 5 confirmation; selection labels (“Seleccionada/o”); review via definition list.
+- **Components:** `AppointmentStatusBadge`, shared `ConfirmDialog` for cancel/deactivate, compact `LoadingIndicator`, consistent `EmptyState`/`ErrorState`.
+- **Responsive:** Breakpoints at ~900px (nav) and 768px (grids); wizard steps wrap on narrow viewports.
+- **Accessibility:** Skip link, focus rings, `aria-current` on wizard step, badges with text + dot (not color-only), dialog roles.
+- **Traceability:** Documented per screen in `design-traceability.md`; IA and patient flow unchanged from PROJECT_CONTEXT §2.
 
 ## HCI / Nielsen examples
 

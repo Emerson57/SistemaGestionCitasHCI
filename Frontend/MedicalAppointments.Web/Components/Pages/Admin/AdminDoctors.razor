@@ -6,8 +6,9 @@
 
 <PageTitle>Médicos</PageTitle>
 <h1 class="page-title">Médicos</h1>
+<p class="page-lead">Registra especialistas y asócialos a una especialidad.</p>
 
-<div class="form-field">
+<div class="form-field" style="max-width: 20rem;">
     <label for="filter">Filtrar por especialidad</label>
     <InputSelect id="filter" @bind-Value="_filterSpecialtyId" @bind-Value:after="LoadAsync">
         <option value="0">Todas</option>
@@ -18,29 +19,43 @@
     </InputSelect>
 </div>
 
-<div class="card" style="margin-bottom:1rem;">
+<div class="card" style="margin-bottom: var(--space-lg);">
     <h2 class="section-title">Registrar médico</h2>
-    <div class="form-field"><label>Nombre</label><InputText @bind-Value="_create.FullName" /></div>
-    <div class="form-field"><label>Email</label><InputText @bind-Value="_create.Email" /></div>
-    <div class="form-field"><label>Contraseña inicial</label><InputText type="password" @bind-Value="_create.InitialPassword" /></div>
-    <div class="form-field"><label>Registro profesional</label><InputText @bind-Value="_create.ProfessionalLicense" /></div>
-    <div class="form-field"><label>Especialidad</label><InputSelect @bind-Value="_create.SpecialtyId">@foreach (var s in _specialties) { <option value="@s.Id">@s.Name</option> }</InputSelect></div>
-    @if (!string.IsNullOrWhiteSpace(_error)) { <div class="validation-summary">@_error</div> }
-    <button class="btn btn-primary" @onclick="CreateAsync">Crear médico</button>
+    <div class="form-grid two-col">
+        <div class="form-field"><label>Nombre</label><InputText @bind-Value="_create.FullName" /></div>
+        <div class="form-field"><label>Email</label><InputText @bind-Value="_create.Email" autocomplete="off" /></div>
+        <div class="form-field"><label>Contraseña inicial</label><InputText type="password" @bind-Value="_create.InitialPassword" autocomplete="new-password" /></div>
+        <div class="form-field"><label>Registro profesional</label><InputText @bind-Value="_create.ProfessionalLicense" /></div>
+        <div class="form-field"><label>Especialidad</label><InputSelect @bind-Value="_create.SpecialtyId">@foreach (var s in _specialties) { <option value="@s.Id">@s.Name</option> }</InputSelect></div>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(_error)) { <div class="validation-summary" role="alert">@_error</div> }
+    <button type="button" class="btn btn-primary" @onclick="CreateAsync">Crear médico</button>
 </div>
 
 @if (_loading) { <LoadingIndicator />; }
+else if (_doctors.Count == 0)
+{
+    <EmptyState Title="Sin médicos" Description="Registra un médico para habilitar citas en esa especialidad." />
+}
 else
 {
-    @foreach (var doctor in _doctors)
-    {
-        <article class="card" style="margin-bottom:0.75rem;">
-            <strong>@doctor.FullName</strong>
-            <p class="text-muted">@doctor.SpecialtyName — Lic. @doctor.ProfessionalLicense</p>
-            <button class="btn btn-danger" @onclick="() => DeactivateAsync(doctor.Id)">Desactivar</button>
-        </article>
-    }
+    <div class="admin-list">
+        @foreach (var doctor in _doctors)
+        {
+            <article class="card admin-list-item">
+                <div>
+                    <strong>@doctor.FullName</strong>
+                    <p class="text-muted">@doctor.SpecialtyName — Reg. @doctor.ProfessionalLicense</p>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" @onclick="() => AskDeactivate(doctor.Id)">Desactivar</button>
+            </article>
+        }
+    </div>
 }
+
+<ConfirmDialog @bind-IsOpen="_confirmOpen" Title="Desactivar médico"
+               Message="El médico no podrá recibir nuevas citas. Los registros históricos se conservan."
+               ConfirmText="Desactivar" OnConfirmed="DeactivateConfirmedAsync" />
 
 @code {
     private bool _loading = true;
@@ -48,6 +63,8 @@ else
     private int _filterSpecialtyId;
     private List<Models.Specialties.SpecialtyDto> _specialties = [];
     private List<Models.Doctors.DoctorDto> _doctors = [];
+    private bool _confirmOpen;
+    private Guid? _deactivateId;
     private Models.Doctors.CreateDoctorRequest _create = new()
     {
         FullName = string.Empty,
@@ -86,9 +103,17 @@ else
         catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
     }
 
-    private async Task DeactivateAsync(Guid id)
+    private void AskDeactivate(Guid id)
     {
-        await DoctorApi.DeactivateAsync(id);
+        _deactivateId = id;
+        _confirmOpen = true;
+    }
+
+    private async Task DeactivateConfirmedAsync()
+    {
+        if (_deactivateId is null) return;
+        await DoctorApi.DeactivateAsync(_deactivateId.Value);
+        _deactivateId = null;
         await LoadAsync();
     }
 }

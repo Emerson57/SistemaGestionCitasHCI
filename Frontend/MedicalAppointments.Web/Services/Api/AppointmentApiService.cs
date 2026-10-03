@@ -20,8 +20,11 @@ public interface IAppointmentApiService
     Task<AppointmentDto> CompleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
-public sealed class AppointmentApiService(HttpClient httpClient, ISessionExpiredHandler sessionExpiredHandler)
-    : ApiClientBase(httpClient, sessionExpiredHandler), IAppointmentApiService
+public sealed class AppointmentApiService(
+    HttpClient httpClient,
+    ISessionExpiredHandler sessionExpiredHandler,
+    IOutgoingApiAuthContext outgoingApiAuthContext)
+    : ApiClientBase(httpClient, sessionExpiredHandler, outgoingApiAuthContext), IAppointmentApiService
 {
     public Task<AppointmentDto> ScheduleAsync(ScheduleAppointmentRequest request, CancellationToken cancellationToken = default) =>
         PostAsync<AppointmentDto>("api/appointments", request, cancellationToken)!;

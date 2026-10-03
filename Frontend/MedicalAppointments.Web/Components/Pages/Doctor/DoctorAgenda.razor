@@ -6,31 +6,39 @@
 
 <PageTitle>Agenda médica</PageTitle>
 <h1 class="page-title">Mi agenda</h1>
+<p class="page-lead">Citas ordenadas por fecha y hora. Solo puedes gestionar tu propia agenda.</p>
 
-@if (_loading) { <LoadingIndicator />; }
+@if (_loading) { <LoadingIndicator Message="Cargando agenda…" />; }
 else if (_error is not null) { <ErrorState Message="@_error" OnRetry="LoadAsync" />; }
-else if (_items.Count == 0) { <EmptyState Title="Agenda vacía" Description="No tienes citas asignadas." />; }
+else if (_items.Count == 0) { <EmptyState Title="Agenda vacía" Description="No tienes citas asignadas en este momento." />; }
 else
 {
-    @foreach (var item in _items.OrderBy(i => i.AppointmentDateTime))
-    {
-        <article class="card" style="margin-bottom: 1rem;">
-            <h2 class="section-title">@item.PatientName</h2>
-            <p>@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
-            <p>Estado: @DisplayLabels.FormatAppointmentStatus(item.Status)</p>
-            @if (!string.IsNullOrWhiteSpace(item.Reason)) { <p class="text-muted">Motivo: @item.Reason</p> }
-            <div class="hero-actions">
-                @if (item.Status == AppointmentStatus.Scheduled)
-                {
-                    <button class="btn btn-primary" @onclick="() => ConfirmAsync(item.Id)">Confirmar</button>
-                }
-                @if (item.Status == AppointmentStatus.Confirmed)
-                {
-                    <button class="btn btn-secondary" @onclick="() => CompleteAsync(item.Id)">Completar</button>
-                }
-            </div>
-        </article>
-    }
+    <ul class="task-list">
+        @foreach (var item in _items.OrderBy(i => i.AppointmentDateTime))
+        {
+            <li>
+                <article class="card">
+                    <h2 class="card-title">@item.PatientName</h2>
+                    <p class="meta-text">@item.AppointmentDateTime.ToLocalTime().ToString("f")</p>
+                    <AppointmentStatusBadge Status="item.Status" />
+                    @if (!string.IsNullOrWhiteSpace(item.Reason))
+                    {
+                        <p class="text-muted">Motivo: @item.Reason</p>
+                    }
+                    <div class="hero-actions">
+                        @if (item.Status == AppointmentStatus.Scheduled)
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="() => ConfirmAsync(item.Id)">Confirmar</button>
+                        }
+                        @if (item.Status == AppointmentStatus.Confirmed)
+                        {
+                            <button type="button" class="btn btn-secondary" @onclick="() => CompleteAsync(item.Id)">Completar</button>
+                        }
+                    </div>
+                </article>
+            </li>
+        }
+    </ul>
 }
 
 @code {

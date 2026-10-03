@@ -1,0 +1,53 @@
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject IAuthSessionSyncService AuthSessionSync
+
+<div style="display:flex; gap: 0.75rem; align-items:center;">
+    <button type="button" class="btn btn-secondary btn-sm" @onclick="ToggleNav" aria-expanded="@_navOpen" aria-controls="app-sidebar">Menú</button>
+    <AuthorizeView>
+        <Authorized>
+            <button type="button" class="btn btn-secondary btn-sm" @onclick="LogoutAsync">Cerrar sesión</button>
+        </Authorized>
+        <NotAuthorized>
+            <a class="btn btn-secondary btn-sm" href="/login">Iniciar sesión</a>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    [Parameter] public bool NavOpen { get; set; }
+    [Parameter] public EventCallback<bool> NavOpenChanged { get; set; }
+
+    private bool _navOpen;
+
+    protected override void OnParametersSet() => _navOpen = NavOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthSessionSync.SyncBrowserStorageFromServerCookieAsync();
+        }
+    }
+
+    private async Task ToggleNav()
+    {
+        _navOpen = !_navOpen;
+        await NavOpenChanged.InvokeAsync(_navOpen);
+    }
+
+    private async Task LogoutAsync()
+    {
+        try
+        {
+            await AuthProvider.SignOutAsync();
+        }
+        catch
+        {
+            // Protected storage may be unavailable; full sign-out clears server cookies.
+        }
+
+        Navigation.NavigateTo("/auth/sign-out", forceLoad: true);
+    }
+}

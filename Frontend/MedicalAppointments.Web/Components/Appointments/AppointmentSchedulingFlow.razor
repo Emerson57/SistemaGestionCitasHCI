@@ -5,25 +5,32 @@
 
 @if (_step == 5 && _created is not null)
 {
-    <div class="card" role="status">
+    <div class="card success-panel" role="status">
+        <div class="success-icon" aria-hidden="true">✓</div>
         <h2 class="section-title">@(RescheduleAppointment is null ? "Cita programada correctamente" : "Cita reprogramada correctamente")</h2>
-        <p><strong>Médico:</strong> @_created.DoctorName</p>
-        <p><strong>Especialidad:</strong> @_created.SpecialtyName</p>
-        <p><strong>Fecha y hora:</strong> @_created.AppointmentDateTime.ToLocalTime().ToString("f")</p>
-        <div class="hero-actions">
+        <dl class="summary-list" style="text-align:left; max-width:24rem; margin: var(--space-lg) auto;">
+            <dt>Médico</dt><dd>@_created.DoctorName</dd>
+            <dt>Especialidad</dt><dd>@_created.SpecialtyName</dd>
+            <dt>Fecha y hora</dt><dd>@_created.AppointmentDateTime.ToLocalTime().ToString("f")</dd>
+        </dl>
+        <div class="hero-actions" style="justify-content:center;">
             <a class="btn btn-primary" href="/paciente/citas">Ver mis citas</a>
-            <a class="btn btn-secondary" href="/paciente">Volver al inicio</a>
+            <a class="btn btn-secondary" href="/paciente">Ir al inicio</a>
         </div>
     </div>
 }
 else
 {
-<div class="wizard-steps" aria-label="Pasos del proceso">
+<ol class="wizard-steps" aria-label="Pasos para agendar cita">
     @for (var i = 1; i <= 4; i++)
     {
-        <span class="wizard-step @(i == _step ? "active" : _step > i ? "done" : string.Empty)">Paso @i — @StepTitle(i)</span>
+        var stepClass = i == _step ? "active" : _step > i ? "done" : string.Empty;
+        <li class="wizard-step @stepClass" aria-current="@(i == _step ? "step" : null)">
+            <span class="step-num">@( _step > i ? "✓" : i.ToString())</span>
+            <span>@StepTitle(i)</span>
+        </li>
     }
-</div>
+</ol>
 
 @if (!string.IsNullOrWhiteSpace(_error))
 {
@@ -42,7 +49,11 @@ else
                 <button type="button" class="card card-selectable @(_selectedSpecialtyId == specialty.Id ? "selected" : string.Empty)"
                         aria-pressed="@(_selectedSpecialtyId == specialty.Id)"
                         @onclick="() => SelectSpecialty(specialty.Id)">
-                    <h3 class="section-title">@specialty.Name</h3>
+                    @if (_selectedSpecialtyId == specialty.Id)
+                    {
+                        <span class="selection-indicator">Seleccionada</span>
+                    }
+                    <h3 class="card-title">@specialty.Name</h3>
                     <p class="text-muted">@(specialty.Description ?? "Consulta médica especializada")</p>
                 </button>
             }
@@ -60,10 +71,15 @@ else if (_step == 2)
             @foreach (var doctor in _doctors)
             {
                 <button type="button" class="card card-selectable @(_selectedDoctorId == doctor.Id ? "selected" : string.Empty)"
-                        @onclick="() => _selectedDoctorId = doctor.Id">
-                    <h3 class="section-title">@doctor.FullName</h3>
+                        aria-pressed="@(_selectedDoctorId == doctor.Id)"
+                        @onclick="() => SelectDoctor(doctor)">
+                    @if (_selectedDoctorId == doctor.Id)
+                    {
+                        <span class="selection-indicator">Seleccionado</span>
+                    }
+                    <h3 class="card-title">@doctor.FullName</h3>
                     <p class="text-muted">@doctor.SpecialtyName</p>
-                    <p class="text-muted">Licencia: @doctor.ProfessionalLicense</p>
+                    <p class="meta-text">Registro profesional: @doctor.ProfessionalLicense</p>
                 </button>
             }
         </div>
@@ -76,7 +92,7 @@ else if (_step == 2)
 else if (_step == 3)
 {
     if (_loading) { <LoadingIndicator Message="Cargando horarios…" />; }
-    else if (_availableDates.Count == 0) { <EmptyState Title="Sin horarios" Description="Este médico no tiene disponibilidad."><button class="btn btn-secondary" @onclick="() => _step = 2">Elegir otro médico</button></EmptyState>; }
+    else if (_availableDates.Count == 0) { <EmptyState Title="Sin horarios disponibles" Description="No hay horarios disponibles para este especialista en este momento."><button class="btn btn-secondary" @onclick="() => _step = 2">Elegir otro médico</button></EmptyState>; }
     else
     {
         <div class="form-field">
@@ -112,21 +128,25 @@ else if (_step == 3)
 else if (_step == 4)
 {
     <div class="card">
-        <h2 class="section-title">Revisión</h2>
-        @if (RescheduleAppointment is not null)
-        {
-            <p><strong>Fecha anterior:</strong> @RescheduleAppointment.AppointmentDateTime.ToLocalTime().ToString("f")</p>
-        }
-        <p><strong>Especialidad:</strong> @_selectedSpecialtyName</p>
-        <p><strong>Médico:</strong> @_selectedDoctorName</p>
-        <p><strong>Nueva fecha y hora:</strong> @_selectedDateTime?.ToLocalTime().ToString("f")</p>
-        @if (!string.IsNullOrWhiteSpace(_reason))
-        {
-            <p><strong>Motivo:</strong> @_reason</p>
-        }
+        <h2 class="section-title">Revisión de la cita</h2>
+        <p class="text-muted">Verifica los datos antes de confirmar.</p>
+        <dl class="summary-list">
+            @if (RescheduleAppointment is not null)
+            {
+                <dt>Fecha anterior</dt>
+                <dd>@RescheduleAppointment.AppointmentDateTime.ToLocalTime().ToString("f")</dd>
+            }
+            <dt>Especialidad</dt><dd>@_selectedSpecialtyName</dd>
+            <dt>Médico</dt><dd>@_selectedDoctorName</dd>
+            <dt>Fecha y hora</dt><dd>@_selectedDateTime?.ToLocalTime().ToString("f")</dd>
+            @if (!string.IsNullOrWhiteSpace(_reason))
+            {
+                <dt>Motivo</dt><dd>@_reason</dd>
+            }
+        </dl>
         <div class="hero-actions">
-            <button class="btn btn-secondary" @onclick="() => _step = 3">Volver</button>
-            <button class="btn btn-primary" disabled="@_loading" @onclick="ConfirmAsync">@(_loading ? "Guardando…" : RescheduleAppointment is null ? "Confirmar cita" : "Confirmar reprogramación")</button>
+            <button type="button" class="btn btn-secondary" @onclick="() => _step = 3">Volver</button>
+            <button type="button" class="btn btn-primary" disabled="@_loading" @onclick="ConfirmAsync">@(_loading ? "Guardando…" : RescheduleAppointment is null ? "Confirmar cita" : "Confirmar reprogramación")</button>
         </div>
     </div>
 }
@@ -185,6 +205,12 @@ else if (_step == 4)
     {
         _selectedSpecialtyId = id;
         _selectedSpecialtyName = _specialties.First(s => s.Id == id).Name;
+    }
+
+    private void SelectDoctor(Models.Doctors.DoctorDto doctor)
+    {
+        _selectedDoctorId = doctor.Id;
+        _selectedDoctorName = doctor.FullName;
     }
 
     private async Task GoDoctorStep()

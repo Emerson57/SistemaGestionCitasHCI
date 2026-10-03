@@ -2,30 +2,75 @@
 @attribute [Authorize(Roles = AppRoles.Patient)]
 @rendermode InteractiveServer
 @inject IPatientApiService PatientApi
-@inject NotificationService Notifications
+@inject IAuthSessionReadiness AuthReadiness
 
 <PageTitle>Mi perfil</PageTitle>
 <h1 class="page-title">Mi perfil</h1>
+<p class="page-lead">Actualiza tus datos de contacto. El correo y el rol se gestionan de forma segura en el servidor.</p>
 
 @if (_loading) { <LoadingIndicator />; }
 else
 {
-    <EditForm Model="_model" OnValidSubmit="SaveAsync">
-        <div class="form-field"><label>Nombre completo</label><InputText @bind-Value="_model.FullName" /></div>
-        <div class="form-field"><label>Fecha de nacimiento</label><InputDate @bind-Value="_birthDate" /></div>
-        <div class="form-field"><label>Dirección</label><InputText @bind-Value="_model.Address" /></div>
-        <div class="form-field"><label>Teléfono</label><InputText @bind-Value="_model.PhoneNumber" /></div>
-        <div class="form-field"><label>Sexo</label><InputSelect @bind-Value="_model.Sex">@foreach (Sex s in Enum.GetValues<Sex>()) { <option value="@s">@DisplayLabels.FormatSex(s)</option> }</InputSelect></div>
-        <div class="form-field"><label>Discapacidad</label><InputText @bind-Value="_model.Disability" /></div>
-        <div class="form-field"><label>Estado civil</label><InputSelect @bind-Value="_model.MaritalStatus">@foreach (MaritalStatus s in Enum.GetValues<MaritalStatus>()) { <option value="@s">@DisplayLabels.FormatMaritalStatus(s)</option> }</InputSelect></div>
-        @if (!string.IsNullOrWhiteSpace(_error)) { <div class="validation-summary">@_error</div> }
-        <button class="btn btn-primary" type="submit" disabled="@_saving">@(_saving ? "Guardando…" : "Guardar cambios")</button>
-    </EditForm>
+    @if (_saved)
+    {
+        <div class="alert-success" role="status">Tus cambios se guardaron correctamente.</div>
+    }
+
+    <div class="page-container narrow">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" class="card">
+            <div class="form-grid two-col">
+                <div class="form-field">
+                    <label for="fullName">Nombre completo</label>
+                    <InputText id="fullName" @bind-Value="_model.FullName" />
+                </div>
+                <div class="form-field">
+                    <label for="birth">Fecha de nacimiento</label>
+                    <InputDate id="birth" @bind-Value="_birthDate" />
+                </div>
+                <div class="form-field">
+                    <label for="address">Dirección</label>
+                    <InputText id="address" @bind-Value="_model.Address" />
+                </div>
+                <div class="form-field">
+                    <label for="phone">Teléfono</label>
+                    <InputText id="phone" @bind-Value="_model.PhoneNumber" />
+                </div>
+                <div class="form-field">
+                    <label for="sex">Sexo</label>
+                    <InputSelect id="sex" @bind-Value="_model.Sex">
+                        @foreach (Sex s in Enum.GetValues<Sex>())
+                        {
+                            <option value="@s">@DisplayLabels.FormatSex(s)</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="form-field">
+                    <label for="marital">Estado civil</label>
+                    <InputSelect id="marital" @bind-Value="_model.MaritalStatus">
+                        @foreach (MaritalStatus s in Enum.GetValues<MaritalStatus>())
+                        {
+                            <option value="@s">@DisplayLabels.FormatMaritalStatus(s)</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="disability">Discapacidad</label>
+                <InputText id="disability" @bind-Value="_model.Disability" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <div class="validation-summary" role="alert">@_error</div>
+            }
+            <button class="btn btn-primary" type="submit" disabled="@_saving">@(_saving ? "Guardando…" : "Guardar cambios")</button>
+        </EditForm>
+    </div>
 }
 
 @code {
     private bool _loading = true;
     private bool _saving;
+    private bool _saved;
     private string? _error;
     private DateTime? _birthDate;
     private Models.Patients.UpdatePatientRequest _model = new()
@@ -35,10 +80,16 @@ else
         PhoneNumber = string.Empty
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+        {
+            return;
+        }
+
         try
         {
+            await AuthReadiness.WaitForApiTokenAsync();
             var me = await PatientApi.GetMeAsync();
             _birthDate = me.BirthDate.ToDateTime(TimeOnly.MinValue);
             _model = new Models.Patients.UpdatePatientRequest
@@ -53,7 +104,11 @@ else
             };
         }
         catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
-        finally { _loading = false; }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task SaveAsync()
@@ -61,10 +116,12 @@ else
         if (_birthDate is null) return;
         _model.BirthDate = DateOnly.FromDateTime(_birthDate.Value);
         _saving = true;
+        _saved = false;
+        _error = null;
         try
         {
             await PatientApi.UpdateMeAsync(_model);
-            Notifications.ShowSuccess("Perfil actualizado correctamente.");
+            _saved = true;
         }
         catch (ApiException ex) { _error = ApiErrorTranslator.ToUserMessage(ex); }
         finally { _saving = false; }
